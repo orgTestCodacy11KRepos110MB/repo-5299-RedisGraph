@@ -191,6 +191,18 @@ void UndoLog_Rollback
 	UndoLog log
 );
 
+// clears undo-log from all entries
+void UndoLog_Clear
+(
+	UndoLog log  // log to clear
+);
+
+// free undo-operation
+void UndoLog_FreeOp
+(
+	UndoOp *op  // operation to free
+);
+
 // free UndoLog
 void UndoLog_Free
 (

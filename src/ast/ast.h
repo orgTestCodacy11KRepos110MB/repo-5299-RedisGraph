@@ -21,13 +21,13 @@ typedef enum {
 } AST_Validation;
 
 typedef struct {
-	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
-	rax *referenced_entities;                           // Mapping of the referenced entities.
-	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
-	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
-	uint *ref_count;                                    // A pointer to reference counter (for deletion).
-	cypher_parse_result_t *parse_result;                // Query parsing output.
-	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
+	const cypher_astnode_t *root;                      // Root element of libcypher-parser AST
+	rax *referenced_entities;                          // Mapping of the referenced entities.
+	AST_AnnotationCtxCollection *anot_ctx_collection;  // Holds annotations contexts.
+	bool free_root;                                    // The root should only be freed if this is a sub-AST we constructed
+	uint *ref_count;                                   // A pointer to reference counter (for deletion).
+	cypher_parse_result_t *parse_result;               // Query parsing output.
+	cypher_parse_result_t *params_parse_result;        // Parameters parsing output.
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.

@@ -266,13 +266,17 @@ void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
 	array_free(identifier_nodes);
 }
 
-AST *AST_Build(cypher_parse_result_t *parse_result) {
+AST *AST_Build
+(
+	cypher_parse_result_t *parse_result
+) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->free_root = false;
+
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->free_root           = false;
 	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
-	ast->parse_result = parse_result;
+	ast->parse_result        = parse_result;
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 
 	*(ast->ref_count) = 1;
@@ -295,13 +299,20 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	return ast;
 }
 
-AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
+AST *AST_NewSegment
+(
+	AST *master_ast,
+	uint start_offset,
+	uint end_offset
+) {
 	AST *ast = rm_malloc(sizeof(AST));
+
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
-	ast->free_root = true;
-	ast->ref_count = rm_malloc(sizeof(uint));
-	ast->parse_result = NULL;
+	ast->free_root           = true;
+	ast->ref_count           = rm_malloc(sizeof(uint));
+	ast->parse_result        = NULL;
 	ast->params_parse_result = NULL;
+
 	uint n = end_offset - start_offset;
 
 	*(ast->ref_count) = 1;
@@ -336,18 +347,27 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	return ast;
 }
 
-void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result) {
-	// When setting this value in AST, the ast should no hold invalid pointers or leftovers from previous executions.
+void AST_SetParamsParseResult
+(
+	AST *ast,
+	cypher_parse_result_t *params_parse_result
+) {
+	// when setting this value in AST
+	// the AST should no hold invalid pointers or leftovers from previous executions
 	ASSERT(ast->params_parse_result == NULL);
 	ast->params_parse_result = params_parse_result;
 }
 
-AST *AST_ShallowCopy(AST *orig) {
+AST *AST_ShallowCopy
+(
+	AST *orig
+) {
 	AST_IncreaseRefCount(orig);
 	size_t ast_size = sizeof(AST);
 	AST *shallow_copy = rm_malloc(ast_size);
 	memcpy(shallow_copy, orig, ast_size);
 	shallow_copy->params_parse_result = NULL;
+
 	return shallow_copy;
 }
 
@@ -528,12 +548,14 @@ const char *AST_ToString(const cypher_astnode_t *node) {
 }
 
 void AST_Free(AST *ast) {
-	if(ast == NULL) return;
+	if(ast == NULL) {
+		return;
+	}
 
 	int ref_count = AST_DecRefCount(ast);
 
-	/* free and nullify parameters parse result if needed,
-	 * after execution, as they are only save for the execution lifetime */
+	// free and nullify parameters parse result if needed,
+	// after execution, as they are only save for the execution lifetime
 	if(ast->params_parse_result) {
 		parse_result_free(ast->params_parse_result);
 	}
