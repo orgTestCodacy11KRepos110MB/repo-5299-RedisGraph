@@ -760,6 +760,134 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return XXH64_digest(&state);
 }
 
+// returns the number of bytes required to represent `v`
+// in a binary format
+size_t SIValue_BinarySize
+(
+	const SIValue *v
+) {
+	SIType t = v->type;
+	size_t n = sizeof(SIType);
+
+	switch(t) {
+		case T_POINT:
+			n += sizeof(Point);
+			break;
+		case T_ARRAY:
+			n += SIArray_BinarySize(v);
+			break;
+		case T_STRING:
+			n += strlen(v->stringval);
+			break;
+		case T_BOOL:
+			n += sizeof(bool);
+			break;
+		case T_INT64:
+			n += sizeof(int64_t);
+			break;
+		case T_DOUBLE:
+			n += sizeof(double);
+			break;
+		default:
+			assert(false && "unsupported SIValue type");
+	}
+
+	return n;
+}
+
+// writes a binary representation of `v` into `stream`
+void SIValue_ToBinary
+(
+	FILE *stream,
+	const SIValue *v
+) {
+	ASSERT(v != NULL);
+	ASSERT(stream != NULL);
+
+	// format:
+	//    type
+	//    value
+	bool b;
+	size_t len = 0;
+
+	SIType t = v->type;
+
+	// write type
+	fwrite_assert(&t, sizeof(SIType), 1, stream);
+
+	// write value
+	switch(t) {
+		case T_POINT:
+			// write value to stream
+			fwrite_assert(&v->point, sizeof(Point), 1, stream);
+			break;
+		case T_ARRAY:
+			// write array to stream
+			SIArray_ToBinary(stream, v);
+			break;
+		case T_STRING:
+			len = strlen(v->stringval);
+			// write string to stream
+			fwrite_assert(&len, sizeof(size_t), 1, stream);
+			fwrite_assert(&v->stringval, len, 1, stream);
+			break;
+		case T_BOOL:
+			// write bool to stream
+			b = SIValue_IsTrue(*v);
+			fwrite_assert(&b, sizeof(bool), 1, stream);
+			break;
+		case T_INT64:
+			// write int to stream
+			fwrite_assert(&v->longval, sizeof(v->longval), 1, stream);
+			break;
+		case T_DOUBLE:
+			// write double to stream
+			fwrite_assert(&v->doubleval, sizeof(v->doubleval), 1, stream);
+			break;
+		default:
+			assert(false && "unknown SIValue type");
+	}
+}
+
+// reads SIValue off of binary stream
+SIValue SIValue_FromBinary
+(
+	FILE *stream  // stream to read value from
+) {
+	ASSERT(stream != NULL);
+
+	// read value type
+	SIType t;
+	SIValue v;
+
+	fread_assert(&t, sizeof(SIType), 1, stream);
+	switch(t) {
+		case T_POINT:
+			// read point from stream
+			break;
+		case T_ARRAY:
+			// read array from stream
+			v = SIArray_FromBinary(stream);
+			break;
+		case T_STRING:
+			// read string from stream
+			break;
+		case T_BOOL:
+			// read bool from stream
+			break;
+		case T_INT64:
+			// read int from stream
+			break;
+		case T_DOUBLE:
+			// read double from stream
+			break;
+		default:
+			assert(false && "unknown SIValue type");
+	}
+
+	return v;
+}
+
 void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
 	if(v.allocation != M_SELF) return;

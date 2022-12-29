@@ -11,72 +11,115 @@
 
 SIValue SIArray_New(uint32_t initialCapacity) {
 	SIValue siarray;
-	siarray.array = array_new(SIValue, initialCapacity);
-	siarray.type = T_ARRAY;
+
+	siarray.type       = T_ARRAY;
+	siarray.array      = array_new(SIValue, initialCapacity);
 	siarray.allocation = M_SELF;
+
 	return siarray;
 }
 
-void SIArray_Append(SIValue *siarray, SIValue value) {
+void SIArray_Append
+(
+	SIValue *siarray,
+	SIValue value
+) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
 	array_append(siarray->array, clone);
 }
 
-SIValue SIArray_Get(SIValue siarray, uint32_t index) {
+SIValue SIArray_Get
+(
+	SIValue siarray,
+	uint32_t index
+) {
 	// check index
-	if(index >= SIArray_Length(siarray)) return SI_NullVal();
+	if(index >= SIArray_Length(siarray)) {
+		return SI_NullVal();
+	}
+
 	return SI_ShareValue(siarray.array[index]);
 }
 
-uint32_t SIArray_Length(SIValue siarray) {
+uint32_t SIArray_Length
+(
+	SIValue siarray
+) {
 	return array_len(siarray.array);
 }
 
-bool SIArray_ContainsType(SIValue siarray, SIType t) {
+bool SIArray_ContainsType
+(
+	SIValue siarray,
+	SIType t
+) {
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
 		SIValue elem = SIArray_Get(siarray, i);
-		if(SI_TYPE(elem) & t) return true;
+		if(SI_TYPE(elem) & t) {
+			return true;
+		}
 
 		// recursively check nested arrays
 		if(SI_TYPE(elem) == T_ARRAY) {
 			bool type_is_nested = SIArray_ContainsType(elem, t);
-			if(type_is_nested) return true;
+			if(type_is_nested) {
+				return true;
+			}
 		}
 	}
 
 	return false;
 }
 
-bool SIArray_AllOfType(SIValue siarray, SIType t) {
+bool SIArray_AllOfType
+(
+	SIValue siarray,
+	SIType t
+) {
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
 		SIValue elem = SIArray_Get(siarray, i);
-		if((SI_TYPE(elem) & t) == 0) return false;
+		if((SI_TYPE(elem) & t) == 0) {
+			return false;
+		}
 	}
 
 	return true;
 }
 
-SIValue SIArray_Clone(SIValue siarray) {
+SIValue SIArray_Clone
+(
+	SIValue siarray
+) {
 	uint arrayLen = SIArray_Length(siarray);
 	SIValue newArray = SIArray_New(arrayLen);
+
 	for(uint i = 0; i < arrayLen; i++) {
 		SIArray_Append(&newArray, SIArray_Get(siarray, i));
 	}
+
 	return newArray;
 }
 
-void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+void SIArray_ToString
+(
+	SIValue list,
+	char **buf,
+	size_t *bufferLen,
+	size_t *bytesWritten
+) {
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 	}
+
 	// open array with "["
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "[");
 	uint arrayLen = SIArray_Length(list);
+
 	for(uint i = 0; i < arrayLen; i ++) {
 		// write the next value
 		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten);
@@ -89,17 +132,22 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 		}
 	}
+
 	if(*bufferLen - *bytesWritten < 2) {
 		*bufferLen += 2;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 	}
+
 	// close array with "]"
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
 }
 
 // this method referenced by Java ArrayList.hashCode() method, which takes
 // into account the hasing of nested values
-XXH64_hash_t SIArray_HashCode(SIValue siarray) {
+XXH64_hash_t SIArray_HashCode
+(
+	SIValue siarray
+) {
 	SIType t = T_ARRAY;
 	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
 
@@ -112,7 +160,73 @@ XXH64_hash_t SIArray_HashCode(SIValue siarray) {
 	return hashCode;
 }
 
-void SIArray_Free(SIValue siarray) {
+// returns the number of bytes required for a binary representation of `arr`
+size_t SIArray_BinarySize
+(
+	const SIValue *arr  // array
+) {
+	// format:
+	// number of elements
+	// elements
+
+	size_t    n         = sizeof(uint32_t);
+	SIValue   *elements = arr->array;
+	uint32_t  len       = array_len(elements);
+
+	for (uint32_t i = 0; i < len; i++) {
+		n += SIValue_BinarySize(elements + i);
+	}
+
+	return n;
+}
+
+// writes a binary representation of `v` into `stream`
+void SIArray_ToBinary
+(
+	FILE *stream,       // stream to populate
+	const SIValue *arr  // array
+) {
+	// format:
+	// number of elements
+	// elements
+
+	SIValue *elements = arr->array;
+	uint32_t len = array_len(elements);
+
+	// write number of elements
+	fwrite_assert(&len, sizeof(uint32_t), 1, stream);
+
+	// write each element
+	for (uint32_t i = 0; i < len; i++) {
+		SIValue_ToBinary(stream, elements + i);
+	}
+}
+
+// creates an array from its binary representation
+// this is the reverse of SIArray_ToBinary
+// x = SIArray_FromBinary(SIArray_ToBinary(y));
+// x == y
+SIValue SIArray_FromBinary
+(
+	FILE *stream  // stream containing binary representation of an array
+) {
+	// read number of elements
+	uint32_t n;
+	fread_assert(&n, sizeof(uint32_t), 1, stream);
+
+	SIValue arr = SIArray_New(n);
+
+	for(uint32_t i = 0; i < n; i++) {
+		array_append(arr.array, SIValue_FromBinary(stream));
+	}
+
+	return arr;
+}
+
+void SIArray_Free
+(
+	SIValue siarray
+) {
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue value = siarray.array[i];

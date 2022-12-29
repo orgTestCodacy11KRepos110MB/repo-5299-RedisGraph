@@ -47,7 +47,8 @@ uint CreateEdge
 uint DeleteNode
 (
 	GraphContext *gc,  // graph context to delete the node
-	Node *n            // the node to be deleted
+	Node *n,           // the node to be deleted
+	bool log           // log deletion in undo-log
 );
 
 // delete an edge
@@ -58,7 +59,8 @@ uint DeleteNode
 int DeleteEdge
 (
 	GraphContext *gc,  // graph context to delete the edge
-	Edge *e            // the edge to be deleted
+	Edge *e,           // the edge to be deleted
+	bool log           // log deletion in undo-log
 );
 
 // update an entity(node/edge)
@@ -74,7 +76,6 @@ void UpdateEntityProperties
 	uint *props_set_count,        // number of properties set (out param)
 	uint *props_removed_count     // number of properties removed (out param)
 );
-
 
 // this function sets the labels given in the rax "labels" to the given node
 // creates the label matrix if not exists

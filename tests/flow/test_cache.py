@@ -1,12 +1,11 @@
+import asyncio
 from common import *
 
 redis_con = None
 
 CACHE_SIZE = 16
 
-
-class testCache(FlowTestsBase):
-
+class testCache():
     def __init__(self):
         # Have only one thread handling queries
         self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
@@ -245,3 +244,31 @@ class testCache(FlowTestsBase):
         cached_result = graph.query(query, params)
         self.env.assertEqual(expected_result, cached_result.result_set)
         self.env.assertTrue(cached_result.cached_execution)
+
+    def test_13_cache_eviction(self):
+        if "to_thread" not in dir(asyncio):
+            env.skip()
+
+        # eviction
+        env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
+        con = env.getConnection()
+        graph = Graph(con, 'cache_eviction')
+
+        # populate graph
+        graph.query("UNWIND range(0, 1000) as x CREATE ({v:x})")
+
+        # _run_query is expected to be issued by multiple threads
+        def _run_query():
+            q = "MATCH (n) WHERE n.v >= $v RETURN count(n)"
+            params = {'v' : 100}
+            g = Graph(env.getConnection(), 'cache_eviction')
+            count = g.query(q, params).result_set[0][0]
+            env.assertEqual(count, 901)
+
+        tasks = []
+        loop = asyncio.get_event_loop()
+        for i in range(1, 50):
+            tasks.append(loop.create_task(asyncio.to_thread(_run_query)))
+
+        loop.run_until_complete(asyncio.wait(tasks))
+

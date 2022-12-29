@@ -107,12 +107,12 @@ static void _DeleteEntities
 
 		// delete edges
 		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += DeleteEdge(op->gc, distinct_edges + i);
+			edge_deleted += DeleteEdge(op->gc, distinct_edges + i, true);
 		}
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
-			node_deleted += DeleteNode(op->gc, distinct_nodes + i);
+			node_deleted += DeleteNode(op->gc, distinct_nodes + i, true);
 		}
 
 		// stats must be updated under lock due to for replication

@@ -321,6 +321,15 @@ UndoLog UndoLog_New(void) {
 	return (UndoLog)array_new(UndoOp, 0);
 }
 
+// returns number of entries in log
+uint UndoLog_Length
+(
+	const UndoLog log  // log to query
+) {
+	ASSERT(log != NULL);
+	return array_len(log);
+}
+
 //------------------------------------------------------------------------------
 // Undo add changes
 //------------------------------------------------------------------------------

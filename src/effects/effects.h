@@ -10,7 +10,8 @@
 #include "../graph/graphcontext.h"
 
 typedef enum {
-	EFFECT_UPDATE = 0,     // entity update
+	EFFECT_UNKNOWN = 0,    // unknown effect
+	EFFECT_UPDATE,         // entity update
 	EFFECT_CREATE_NODE,    // node creation
 	EFFECT_CREATE_EDGE,    // edge creation
 	EFFECT_DELETE_NODE,    // node deletion
@@ -27,13 +28,14 @@ typedef enum {
 // create a list of effects from the undo-log
 u_char *Effects_FromUndoLog
 (
-	UndoLog log;
+	UndoLog log,
+	size_t *l
 );
 
 void Effects_Apply
 (
 	GraphContext *gc,
-	char *effects_buff,
+	const char *effects_buff,
 	size_t l
 );
 

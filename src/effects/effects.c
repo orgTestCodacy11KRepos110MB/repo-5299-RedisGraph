@@ -6,6 +6,9 @@
 
 #include "RG.h"
 #include "effects.h"
+#include "../undo_log/undo_log.h"
+
+#include <struct.h>
 
 //bool _EffectFromUndoNodeCreate
 //(
@@ -52,76 +55,82 @@ static void _EffectFromUndoNodeDelete
 	//    node ID
 	
 	const UndoDeleteNodeOp *_op = (const UndoDeleteNodeOp*)op;
+
 	EffectType t = EFFECT_DELETE_NODE;
 
 	// write effect type
-	fwrite(&t, sizeof(EffectType), 1, stream); 
+	fwrite_assert(&t, sizeof(EffectType), 1, stream); 
 
 	// write node ID
-	fwrite(&_op->id, sizeof(EntityID), 1, stream); 
+	fwrite_assert(&_op->id, sizeof(EntityID), 1, stream); 
 }
 
-//static void _EffectFromUndoEdgeDelete
-//(
-//	u_char **buff,    // buffer to write to
-//	const UndoOp *op  // undo operation to capture
-//) {
-//	// format:
-//	//    effect type
-//	//    node ID
-//
-//	const UndoDeleteEdgeOp *_op = (const UndoDeleteEdgeOp*)op;
-//
-//	// write effect type
-//	*((EffectType *)*buff) = EFFECT_DELETE_EDGE;
-//
-//	// advance buffer
-//	*buff += sizeof(EffectType);
-//
-//	// write edge ID
-//	*((EntityID *)*buff) = _op->id;
-//
-//	// advance buffer
-//	*buff += sizeof(EntityID);
-//}
+static void _EffectFromUndoEdgeDelete
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to capture
+) {
+	// format:
+	//    effect type
+	//    edge ID
+	//    relation ID
+	//    src ID
+	//    dest ID
 
-//static void _EffectFromUndoUpdate
-//(
-//	u_char **buff,    // buffer to write to
-//	const UndoOp *op  // undo operation to capture
-//) {
-//	// format:
-//	//    effect type
-//	//    entity type node/edge
-//	//    attribute ID
-//	//    attribute value
-//	
-//	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
-//	GraphEntity *e = (_op->entity_type == GETYPE_NODE) ?
-//		(GraphEntity*)&_op->n : (GraphEntity*)&_op->e;
-//
-//	// write effect type
-//	*((EffectType *)*buff) = EFFECT_UPDATE;
-//
-//	// advance buffer
-//	*buff += sizeof(EffectType);
-//
-//	// write entity type
-//	*((EntityID *)*buff) = _op->entity_type;
-//
-//	// advance buffer
-//	*buff += sizeof(EffectType);
-//
-//	// write attribute ID
-//	*((EntityID *)*buff) = _op->attr_id;
-//
-//	// advance buffer
-//	*buff += sizeof(EntityID);
-//
-//	// write attribute value and advance buffer
-//	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
-//	*buff += SIValue_ToBinary(*buff, v);
-//}
+	const UndoDeleteEdgeOp *_op = (const UndoDeleteEdgeOp*)op;
+
+	EffectType t = EFFECT_DELETE_EDGE;
+
+	// write effect type
+	fwrite_assert(&t, sizeof(t), 1, stream); 
+
+	// write edge ID
+	fwrite_assert(&_op->id, sizeof(_op->id), 1, stream); 
+
+	// write relation ID
+	fwrite_assert(&_op->relationID, sizeof(_op->relationID), 1, stream); 
+
+	// write src ID
+	fwrite_assert(&_op->srcNodeID, sizeof(_op->srcNodeID), 1, stream); 
+
+	// write dest ID
+	fwrite_assert(&_op->destNodeID, sizeof(_op->destNodeID), 1, stream); 
+}
+
+static void _EffectFromUndoUpdate
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to capture
+) {
+	// format:
+	//    effect type
+	//    entity type node/edge
+	//    entity ID
+	//    attribute ID
+	//    attribute value
+	
+	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
+
+	GraphEntity *e = (_op->entity_type == GETYPE_NODE) ?
+		(GraphEntity*)&_op->n : (GraphEntity*)&_op->e;
+
+	// write effect type
+	EffectType t = EFFECT_UPDATE;
+	fwrite_assert(&t, sizeof(EffectType), 1, stream); 
+
+	// write entity type
+	fwrite_assert(&_op->entity_type, sizeof(_op->entity_type), 1, stream);
+
+	// write entity ID
+	fwrite_assert(&ENTITY_GET_ID(e), sizeof(EntityID), 1, stream);
+
+	// write attribute ID
+	fwrite_assert(&_op->attr_id, sizeof(_op->attr_id), 1, stream);
+
+	// write attribute value and advance buffer
+	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
+	SIValue_ToBinary(stream, v);
+}
 
 static void _EffectFromUndoOp
 (
@@ -135,12 +144,12 @@ static void _EffectFromUndoOp
 		case UNDO_DELETE_NODE:
 			_EffectFromUndoNodeDelete(stream, op);
 			break;
-	//	case UNDO_DELETE_EDGE:
-	//		_EffectFromUndoEdgeDelete(stream, op);
-	//		break;
-	//	case UNDO_UPDATE:
-	//		_EffectFromUndoUpdate(stream, op);
-	//		break;
+		case UNDO_DELETE_EDGE:
+			_EffectFromUndoEdgeDelete(stream, op);
+			break;
+		case UNDO_UPDATE:
+			_EffectFromUndoUpdate(stream, op);
+			break;
 		default:
 			//assert(false && "unknown undo operation");
 			//return false;
@@ -173,6 +182,7 @@ size_t _ComputeUpdateSize
 	// format:
 	//    effect type
 	//    entity type node/edge
+	//    entity ID
 	//    attribute ID
 	//    attribute value
 	
@@ -183,8 +193,11 @@ size_t _ComputeUpdateSize
 
 	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
 
-	size_t s = sizeof(EffectType) + sizeof(GraphEntityType) + sizeof(Attribute_ID);
-	s += SIValue_BinarySize(v);
+	size_t s = sizeof(EffectType)                +
+			   fldsiz(UndoUpdateOp, entity_type) +
+			   sizeof(EntityID)                  +
+			   fldsiz(UndoUpdateOp, attr_id)     +
+			   SIValue_BinarySize(v);
 
 	return s;
 }
@@ -198,13 +211,17 @@ size_t _ComputeBufferSize
 
 	for(uint i = 0; i < n; i++) {
 		const UndoOp *op = undolog + i;
+		s += sizeof(EffectType);
 
 		switch(op->type) {
 			case UNDO_DELETE_NODE:
-				s += sizeof(EffectType) + sizeof(EntityID);
+				s += fldsiz(UndoDeleteNodeOp, id);
 				break;
 			case UNDO_DELETE_EDGE:
-				s += sizeof(EffectType) + sizeof(EntityID);
+				s += fldsiz(UndoDeleteEdgeOp, id)         +
+					 fldsiz(UndoDeleteEdgeOp, relationID) +
+					 fldsiz(UndoDeleteEdgeOp, srcNodeID)  +
+					 fldsiz(UndoDeleteEdgeOp, destNodeID);
 				break;
 			case UNDO_UPDATE:
 				s += _ComputeUpdateSize(op);
@@ -239,20 +256,23 @@ size_t _ComputeBufferSize
 // create a list of effects from the undo-log
 u_char *Effects_FromUndoLog
 (
-	UndoLog log
+	UndoLog log,
+	size_t *len
 ) {
 	ASSERT(log != NULL);
 
 	uint n = UndoLog_Length(log);
-	if(n == 0) {
-		return NULL;
-	}
+	ASSERT(n > 0);
 
 	//--------------------------------------------------------------------------
 	// determine required buffer size
 	//--------------------------------------------------------------------------
 
 	size_t size = _ComputeBufferSize(log);
+	if(size == 0) {
+		return NULL;
+	}
+
 	u_char *buffer = rm_malloc(sizeof(u_char) * size);
 	FILE *stream = fmemopen(buffer, size, "w");
 
@@ -276,10 +296,11 @@ u_char *Effects_FromUndoLog
 	// close stream
 	fclose(stream);
 
-	// free undo-log
+	// clear undo-log
 	UndoLog_Clear(log);
-	UndoLog_Free(log);
 
+	// set output length and return buffer
+	*len = size;
 	return buffer;
 }
 

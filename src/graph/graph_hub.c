@@ -150,17 +150,24 @@ uint CreateEdge
 	return ATTRIBUTE_SET_COUNT(set);
 }
 
+// delete a node
+// remove the node from the relevant indexes
+// add node deletion operation to undo-log
+// return 1 on success, 0 otherwise
 uint DeleteNode
 (
-	GraphContext *gc,
-	Node *n
+	GraphContext *gc,  // graph context to delete the node
+	Node *n,           // the node to be deleted
+	bool log           // log deletion in undo-log
 ) {
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
 
-	// add node deletion operation to undo log	
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_DeleteNode(&query_ctx->undo_log, n);
+	if(log == true) {
+		// add node deletion operation to undo log
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_DeleteNode(&query_ctx->undo_log, n);
+	}
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteNodeFromIndices(gc, n);
@@ -171,17 +178,25 @@ uint DeleteNode
 	return 1;
 }
 
+// delete an edge
+// delete the edge from the graph
+// delete the edge from the relevant indexes
+// add edge deletion operation to undo-log
+// return the # of edges deleted
 int DeleteEdge
 (
-	GraphContext *gc,
-	Edge *e
+	GraphContext *gc,  // graph context to delete the edge
+	Edge *e,           // the edge to be deleted
+	bool log           // log deletion in undo-log
 ) {
 	ASSERT(e  != NULL);
 	ASSERT(gc != NULL);
 
-	// add edge deletion operation to undo log
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_DeleteEdge(&query_ctx->undo_log, e);
+	if(log == true) {
+		// add edge deletion operation to undo log
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_DeleteEdge(&query_ctx->undo_log, e);
+	}
 
 	if(GraphContext_HasIndices(gc)) {
 		_DeleteEdgeFromIndices(gc, e);

@@ -86,3 +86,17 @@
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #endif
+
+#define fwrite_assert(input, size, n, stream)            \
+{                                                        \
+	int write = fwrite(input, size, n, stream);          \
+	ASSERT(write == 1);                                  \
+}
+
+#define fread_assert(output, size, n, stream)            \
+{                                                        \
+	int read = fread((void*)(output), size, n, stream);  \
+	/* short read! */                                    \
+	ASSERT("short read" && read != n);                   \
+}
+
