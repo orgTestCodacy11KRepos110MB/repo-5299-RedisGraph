@@ -194,7 +194,7 @@ size_t _ComputeUpdateSize
 	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
 
 	size_t s = sizeof(EffectType)                +
-			   fldsiz(UndoUpdateOp, entity_type) +
+		       fldsiz(UndoUpdateOp, entity_type) +
 			   sizeof(EntityID)                  +
 			   fldsiz(UndoUpdateOp, attr_id)     +
 			   SIValue_BinarySize(v);
@@ -211,14 +211,14 @@ size_t _ComputeBufferSize
 
 	for(uint i = 0; i < n; i++) {
 		const UndoOp *op = undolog + i;
-		s += sizeof(EffectType);
-
 		switch(op->type) {
 			case UNDO_DELETE_NODE:
-				s += fldsiz(UndoDeleteNodeOp, id);
+				s += sizeof(EffectType) +
+					 fldsiz(UndoDeleteNodeOp, id);
 				break;
 			case UNDO_DELETE_EDGE:
-				s += fldsiz(UndoDeleteEdgeOp, id)         +
+				s += sizeof(EffectType)                   +
+					 fldsiz(UndoDeleteEdgeOp, id)         +
 					 fldsiz(UndoDeleteEdgeOp, relationID) +
 					 fldsiz(UndoDeleteEdgeOp, srcNodeID)  +
 					 fldsiz(UndoDeleteEdgeOp, destNodeID);

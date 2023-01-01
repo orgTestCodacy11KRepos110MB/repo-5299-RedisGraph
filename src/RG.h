@@ -97,6 +97,6 @@
 {                                                        \
 	int read = fread((void*)(output), size, n, stream);  \
 	/* short read! */                                    \
-	ASSERT("short read" && read != n);                   \
+	ASSERT("short read" && read == n);                   \
 }
 

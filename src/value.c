@@ -859,27 +859,46 @@ SIValue SIValue_FromBinary
 	// read value type
 	SIType t;
 	SIValue v;
+	size_t len;  // string length
+
+	bool     b;
+	int64_t  i;
+	double   d;
+	char     *s;
+	struct SIValue *array;
+	Point point;
 
 	fread_assert(&t, sizeof(SIType), 1, stream);
 	switch(t) {
 		case T_POINT:
 			// read point from stream
+			fread_assert(&v.point, sizeof(v.point), 1, stream);
 			break;
 		case T_ARRAY:
 			// read array from stream
 			v = SIArray_FromBinary(stream);
 			break;
 		case T_STRING:
+			// read string length from stream
+			fread_assert(&len, sizeof(len), 1, stream);
+			v.stringval = rm_malloc(sizeof(char) * len);
 			// read string from stream
+			fread_assert(&v.stringval, sizeof(char), len, stream);
 			break;
 		case T_BOOL:
 			// read bool from stream
+			fread_assert(&b, sizeof(b), 1, stream);
+			v = SI_BoolVal(b);
 			break;
 		case T_INT64:
 			// read int from stream
+			fread_assert(&i, sizeof(i), 1, stream);
+			v = SI_LongVal(i);
 			break;
 		case T_DOUBLE:
 			// read double from stream
+			fread_assert(&d, sizeof(d), 1, stream);
+			v = SI_DoubleVal(d);
 			break;
 		default:
 			assert(false && "unknown SIValue type");
