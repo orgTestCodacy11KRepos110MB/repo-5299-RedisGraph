@@ -9,12 +9,14 @@
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
 
+// GRAPH.EFFECT command handler
 int Graph_Effect
 (
-	RedisModuleCtx *ctx,
-	RedisModuleString **argv,
-	int argc
+	RedisModuleCtx *ctx,       // redis module context
+	RedisModuleString **argv,  // command arguments
+	int argc                   // number of arguments
 ) {
+	// TODO: remove timmer
 	double tic[2];
 	simple_tic(tic);
 
@@ -34,9 +36,10 @@ int Graph_Effect
 	size_t l = 0;  // effects buffer length
 	const char *effects_buff = RedisModule_StringPtrLen(argv[2], &l);
 
+	// apply effects
 	Effects_Apply(gc, effects_buff, l);
 
-	// release the GraphContext
+	// release GraphContext
 	GraphContext_DecreaseRefCount(gc);
 
 	// DEBUG report time

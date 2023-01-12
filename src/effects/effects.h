@@ -9,6 +9,7 @@
 #include "../undo_log/undo_log.h"
 #include "../graph/graphcontext.h"
 
+// types of effects
 typedef enum {
 	EFFECT_UNKNOWN = 0,    // unknown effect
 	EFFECT_UPDATE,         // entity update
@@ -19,6 +20,7 @@ typedef enum {
 	EFFECT_SET_LABELS,     // set labels
 	EFFECT_REMOVE_LABELS,  // remove labels
 	EFFECT_ADD_SCHEMA,     // schema addition
+	EFFECT_ADD_ATTRIBUTE,  // add attribute
 } EffectType;
 
 //------------------------------------------------------------------------------
@@ -32,10 +34,11 @@ u_char *Effects_FromUndoLog
 	size_t *l
 );
 
+// applys effects encoded in buffer
 void Effects_Apply
 (
-	GraphContext *gc,
-	const char *effects_buff,
-	size_t l
+	GraphContext *gc,          // graph to operate on
+	const char *effects_buff,  // encoded effects
+	size_t l                   // size of buffer
 );
 

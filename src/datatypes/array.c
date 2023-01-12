@@ -194,7 +194,7 @@ void SIArray_ToBinary
 	uint32_t len = array_len(elements);
 
 	// write number of elements
-	fwrite_assert(&len, sizeof(uint32_t), 1, stream);
+	fwrite_assert(&len, sizeof(uint32_t), stream);
 
 	// write each element
 	for (uint32_t i = 0; i < len; i++) {
@@ -212,7 +212,7 @@ SIValue SIArray_FromBinary
 ) {
 	// read number of elements
 	uint32_t n;
-	fread_assert(&n, sizeof(uint32_t), 1, stream);
+	fread_assert(&n, sizeof(uint32_t), stream);
 
 	SIValue arr = SIArray_New(n);
 

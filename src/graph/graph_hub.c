@@ -254,8 +254,8 @@ static void _Update_Entity_Property
 	}
 }
 
-// updates a graph entity attribute set. Returns as out params the number
-// of properties set and removed.
+// updates a graph entity attribute set
+// returns as out params the number of attributes set and removed
 void UpdateEntityProperties
 (
 	GraphContext *gc,             // graph context
@@ -291,7 +291,7 @@ void UpdateEntityProperties
 		_AddEdgeToIndices(gc, (Edge *)ge);
 	}
 
-	*props_set_count = set_props;
+	*props_set_count     = set_props;
 	*props_removed_count = removed_props;
 }
 

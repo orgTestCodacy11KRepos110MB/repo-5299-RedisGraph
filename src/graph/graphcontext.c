@@ -305,7 +305,11 @@ void GraphContext_RemoveSchema(GraphContext *gc, int schema_id, SchemaType t) {
 	}
 }
 
-const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
+const char *GraphContext_GetEdgeRelationType
+(
+	const GraphContext *gc,
+	Edge *e
+) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
 	ASSERT(reltype_id != GRAPH_NO_RELATION);
 	return gc->relation_schemas[reltype_id]->name;
@@ -360,7 +364,11 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	return (uintptr_t)attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
+const char *GraphContext_GetAttributeString
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];

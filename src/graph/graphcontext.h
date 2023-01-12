@@ -144,13 +144,6 @@ void GraphContext_RemoveSchema
 	SchemaType t
 );
 
-// retrieve the label string for a given Node object
-const char *GraphContext_GetNodeLabel
-(
-	const GraphContext *gc,
-	Node *n
-);
-
 // retrieve the relation type string for a given edge object
 const char *GraphContext_GetEdgeRelationType
 (

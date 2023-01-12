@@ -813,13 +813,13 @@ void SIValue_ToBinary
 	SIType t = v->type;
 
 	// write type
-	fwrite_assert(&t, sizeof(SIType), 1, stream);
+	fwrite_assert(&t, sizeof(SIType), stream);
 
 	// write value
 	switch(t) {
 		case T_POINT:
 			// write value to stream
-			fwrite_assert(&v->point, sizeof(Point), 1, stream);
+			fwrite_assert(&v->point, sizeof(Point), stream);
 			break;
 		case T_ARRAY:
 			// write array to stream
@@ -828,21 +828,21 @@ void SIValue_ToBinary
 		case T_STRING:
 			len = strlen(v->stringval);
 			// write string to stream
-			fwrite_assert(&len, sizeof(size_t), 1, stream);
-			fwrite_assert(&v->stringval, len, 1, stream);
+			fwrite_assert(&len, sizeof(size_t), stream);
+			fwrite_assert(&v->stringval, len, stream);
 			break;
 		case T_BOOL:
 			// write bool to stream
 			b = SIValue_IsTrue(*v);
-			fwrite_assert(&b, sizeof(bool), 1, stream);
+			fwrite_assert(&b, sizeof(bool), stream);
 			break;
 		case T_INT64:
 			// write int to stream
-			fwrite_assert(&v->longval, sizeof(v->longval), 1, stream);
+			fwrite_assert(&v->longval, sizeof(v->longval), stream);
 			break;
 		case T_DOUBLE:
 			// write double to stream
-			fwrite_assert(&v->doubleval, sizeof(v->doubleval), 1, stream);
+			fwrite_assert(&v->doubleval, sizeof(v->doubleval), stream);
 			break;
 		default:
 			assert(false && "unknown SIValue type");
@@ -868,11 +868,11 @@ SIValue SIValue_FromBinary
 	struct SIValue *array;
 	Point point;
 
-	fread_assert(&t, sizeof(SIType), 1, stream);
+	fread_assert(&t, sizeof(SIType), stream);
 	switch(t) {
 		case T_POINT:
 			// read point from stream
-			fread_assert(&v.point, sizeof(v.point), 1, stream);
+			fread_assert(&v.point, sizeof(v.point), stream);
 			break;
 		case T_ARRAY:
 			// read array from stream
@@ -880,24 +880,24 @@ SIValue SIValue_FromBinary
 			break;
 		case T_STRING:
 			// read string length from stream
-			fread_assert(&len, sizeof(len), 1, stream);
+			fread_assert(&len, sizeof(len), stream);
 			v.stringval = rm_malloc(sizeof(char) * len);
 			// read string from stream
-			fread_assert(&v.stringval, sizeof(char), len, stream);
+			fread_assert(&v.stringval, sizeof(char) * len, stream);
 			break;
 		case T_BOOL:
 			// read bool from stream
-			fread_assert(&b, sizeof(b), 1, stream);
+			fread_assert(&b, sizeof(b), stream);
 			v = SI_BoolVal(b);
 			break;
 		case T_INT64:
 			// read int from stream
-			fread_assert(&i, sizeof(i), 1, stream);
+			fread_assert(&i, sizeof(i), stream);
 			v = SI_LongVal(i);
 			break;
 		case T_DOUBLE:
 			// read double from stream
-			fread_assert(&d, sizeof(d), 1, stream);
+			fread_assert(&d, sizeof(d), stream);
 			v = SI_DoubleVal(d);
 			break;
 		default:

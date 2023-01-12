@@ -123,7 +123,7 @@ SIValue AttributeSet_GetIdx
 
 static AttributeSet AttributeSet_AddPrepare
 (
-	AttributeSet *set,     // set to update
+	AttributeSet *set,    // set to update
 	Attribute_ID attr_id  // attribute identifier
 ) {
 	ASSERT(set != NULL);
@@ -311,7 +311,9 @@ void AttributeSet_Free
 
 	AttributeSet _set = *set;
 
-	if(_set == NULL) return;
+	if(_set == NULL) {
+		return;
+	}
 
 	// free all allocated properties
 	for(int i = 0; i < _set->attr_count; i++) {

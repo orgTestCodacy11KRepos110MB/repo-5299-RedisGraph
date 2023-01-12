@@ -11,32 +11,36 @@
 #include <stdio.h>
 #include <struct.h>
 
-static EffectType _ReadEffectType
+// read effect type from stream
+static EffectType ReadEffectType
 (
-	FILE *stream
+	FILE *stream  // effects stream
 ) {
-	EffectType t = EFFECT_UNKNOWN;
-	fread_assert(&t, sizeof(EffectType), 1, stream);
+	EffectType t = EFFECT_UNKNOWN;  // default to unknown effect type
+
+	// read EffectType off of stream
+	fread_assert(&t, sizeof(EffectType), stream);
+
 	return t;
 }
 
-static void _ApplyUpdate
+// process ApplyUpdate effect
+static void ApplyUpdate
 (
-	FILE *stream,
-	GraphContext *gc
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
 ) {
-	// format:
+	// effect format:
 	//    entity type node/edge
 	//    entity ID
 	//    attribute ID
 	//    attribute value
 	
-	Node n;
-	SIValue v;
-	uint props_set;
-	GraphEntityType t;
-	uint props_removed;
-	Attribute_ID attr_id;
+	SIValue v;             // updated value
+	uint props_set;        // number of attributes updated
+	GraphEntityType t;     // type of entity node/edge
+	uint props_removed;    // number of attributes removed
+	Attribute_ID attr_id;  // entity ID
 
 	Graph *g = gc->g;
 	EntityID id = INVALID_ENTITY_ID;
@@ -46,15 +50,15 @@ static void _ApplyUpdate
 	//--------------------------------------------------------------------------
 
 	// read entity type
-	fread_assert(&t, sizeof(GraphEntityType), 1, stream);
+	fread_assert(&t, sizeof(GraphEntityType), stream);
 
 	// read entity ID
-	fread_assert(&id, sizeof(EntityID), 1, stream);
+	fread_assert(&id, sizeof(EntityID), stream);
 
 	// read attribute ID
-	fread_assert(&attr_id, sizeof(Attribute_ID), 1, stream);
+	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
 
-	// read attributes
+	// read attribute value
 	v = SIValue_FromBinary(stream);
 
 	//--------------------------------------------------------------------------
@@ -79,38 +83,46 @@ static void _ApplyUpdate
 
 	AttributeSet set = AttributeSet_New();
 	AttributeSet_Add(&set, attr_id, v);
+
+	// perform update
 	UpdateEntityProperties(gc, &ge, set, t, &props_set, &props_removed);
+	ASSERT(props_set + props_removed == 1);  // expecting a single change
 
 	// clean up
 	AttributeSet_Free(&set);
 }
 
-static void _ApplyDeleteNode
+// process DeleteNode effect
+static void ApplyDeleteNode
 (
-	FILE *stream,
-	GraphContext *gc
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
 ) {
-	// format:
+	// effect format
 	//    node ID
 	
-	Node n;
-	EntityID id = INVALID_ENTITY_ID;
-	Graph *g = gc->g;
+	Node n;            // node to delete
+	EntityID id;       // node ID
+	Graph *g = gc->g;  // graph to delete node from
 
-	fread_assert(&id, sizeof(EntityID), 1, stream);
+	// read node ID off of stream
+	fread_assert(&id, sizeof(EntityID), stream);
 
+	// retrieve node from graph
 	int res = Graph_GetNode(g, id, &n);
 	ASSERT(res != 0);
 
+	// delete node
 	DeleteNode(gc, &n, false);
 }
 
-static void _ApplyDeleteEdge
+// process DeleteNode effect
+static void ApplyDeleteEdge
 (
-	FILE *stream,
-	GraphContext *gc
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
 ) {
-	// format:
+	// effect format:
 	//    edge ID
 	//    relation ID
 	//    src ID
@@ -120,27 +132,27 @@ static void _ApplyDeleteEdge
 	Node s;  // edge src node
 	Node t;  // edge dest node
 
-	EntityID id   = INVALID_ENTITY_ID;
-	int      r_id = GRAPH_UNKNOWN_RELATION;
-	NodeID   s_id = INVALID_ENTITY_ID;
-	NodeID   t_id = INVALID_ENTITY_ID;
+	EntityID id   = INVALID_ENTITY_ID;       // edge ID
+	int      r_id = GRAPH_UNKNOWN_RELATION;  // edge rel-type
+	NodeID   s_id = INVALID_ENTITY_ID;       // edge src node ID
+	NodeID   t_id = INVALID_ENTITY_ID;       // edge dest node ID
 
 	int res;
 	UNUSED(res);
 
-	Graph *g = gc->g;
+	Graph *g = gc->g;  // graph to delete edge from
 
 	// read edge ID
-	fread_assert(&id, fldsiz(UndoDeleteEdgeOp, id), 1, stream);
+	fread_assert(&id, fldsiz(UndoDeleteEdgeOp, id), stream);
 
 	// read relation ID
-	fread_assert(&r_id, fldsiz(UndoDeleteEdgeOp, relationID), 1, stream);
+	fread_assert(&r_id, fldsiz(UndoDeleteEdgeOp, relationID), stream);
 
 	// read src node ID
-	fread_assert(&s_id, fldsiz(UndoDeleteEdgeOp, srcNodeID), 1, stream);
+	fread_assert(&s_id, fldsiz(UndoDeleteEdgeOp, srcNodeID), stream);
 
 	// read dest node ID
-	fread_assert(&t_id, fldsiz(UndoDeleteEdgeOp, destNodeID), 1, stream);
+	fread_assert(&t_id, fldsiz(UndoDeleteEdgeOp, destNodeID), stream);
 
 	// get src node, dest node and edge from the graph
 	res = Graph_GetNode(g, s_id, (Node*)&s);
@@ -159,37 +171,41 @@ static void _ApplyDeleteEdge
 	DeleteEdge(gc, &e, false);
 }
 
+// applys effects encoded in buffer
 void Effects_Apply
 (
-	GraphContext *gc,
-	const char *effects_buff,
-	size_t l
+	GraphContext *gc,          // graph to operate on
+	const char *effects_buff,  // encoded effects
+	size_t l                   // size of buffer
 ) {
-	ASSERT(l > 0);
-	ASSERT(effects_buff != NULL);
+	// validations
+	ASSERT(l > 0);  // buffer can't be empty
+	ASSERT(effects_buff != NULL);  // buffer can't be NULL
 	
+	// read buffer in a stream fashion
 	FILE *stream = fmemopen((void*)effects_buff, l, "r");
 	
+	// as long as there's data in stream
 	while(ftell(stream) < l) {
 		// read effect type
-		EffectType t = _ReadEffectType(stream);
+		EffectType t = ReadEffectType(stream);
 		switch(t) {
 			case EFFECT_DELETE_NODE:
-				_ApplyDeleteNode(stream, gc);
+				ApplyDeleteNode(stream, gc);
 				break;
 			case EFFECT_DELETE_EDGE:
-				_ApplyDeleteEdge(stream, gc);
+				ApplyDeleteEdge(stream, gc);
 				break;
 			case EFFECT_UPDATE:
-				_ApplyUpdate(stream, gc);
+				ApplyUpdate(stream, gc);
 				break;
 			default:
-				//assert(false && "unknown undo operation");
-				//return false;
+				assert(false && "unknown effect type");
 				break;
 		}
 	}
 
+	// close stream
 	fclose(stream);
 }
 
