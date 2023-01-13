@@ -262,7 +262,12 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	else return array_len(gc->relation_schemas);
 }
 
-Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
+Schema *GraphContext_GetSchemaByID
+(
+	const GraphContext *gc,
+	int id,
+	SchemaType t
+) {
 	Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
 	if(id == GRAPH_NO_LABEL) return NULL;
 	return schemas[id];

@@ -81,8 +81,8 @@ struct UndoUpdateOp {
 typedef struct UndoLabelsOp UndoLabelsOp;
 struct UndoLabelsOp {
 	Node node;
-	int* label_lds;
-	size_t labels_count;
+	LabelID* label_ids;
+	ushort labels_count;
 };
 
 typedef struct UndoAddSchemaOp UndoAddSchemaOp;

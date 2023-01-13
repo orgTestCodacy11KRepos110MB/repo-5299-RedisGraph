@@ -11,50 +11,17 @@
 
 #include <struct.h>
 
-//bool _EffectFromUndoNodeCreate
-//(
-//	char **buffer,
-//	uint buffer_size,
-//	const UndoCreateOp *undo_op
-//) {
-//	// format:
-//	//    effect type
-//	//    node ID
-//	//    number of labels
-//	//    lables
-//	//    number of attributes
-//	//    attributes
-//	
-//	Node *n = &undo_op->n;
-//	
-//	effect->create.id = ENTITY_GET_ID(n);
-//	memcpy(*buffer, 
-//
-//	uint lbl_count = 0;
-//	NODE_GET_LABELS(g, n, lbl_count);
-//
-//	effect->create.n_labels = lbl_count;
-//	effect->create.labels = 
-//	effect->create.attrs = 
-//}
-
-//bool _EffectFromUndoEdgeCreate
-//(
-//	Effect *effect,
-//	UndoCreateOp *undo_op
-//) {
-//
-//}
-
 // convert UndoNodeDelete into a NodeDelete effect
 static void EffectFromUndoNodeDelete
 (
 	FILE *stream,     // effects stream
 	const UndoOp *op  // undo operation to convert
 ) {
+	//--------------------------------------------------------------------------
 	// effect format:
 	//    effect type
 	//    node ID
+	//--------------------------------------------------------------------------
 	
 	// undo operation
 	const UndoDeleteNodeOp *_op = (const UndoDeleteNodeOp*)op;
@@ -75,12 +42,14 @@ static void EffectFromUndoEdgeDelete
 	FILE *stream,     // effects stream
 	const UndoOp *op  // undo operation to convert
 ) {
+	//--------------------------------------------------------------------------
 	// effect format:
 	//    effect type
 	//    edge ID
 	//    relation ID
 	//    src ID
 	//    dest ID
+	//--------------------------------------------------------------------------
 
 	// undo operation
 	const UndoDeleteEdgeOp *_op = (const UndoDeleteEdgeOp*)op;
@@ -104,6 +73,45 @@ static void EffectFromUndoEdgeDelete
 	fwrite_assert(&_op->destNodeID, sizeof(_op->destNodeID), stream); 
 }
 
+// convert UndoAddSchema into a AddSchema effect
+static void EffectFromUndoSchemaAdd
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to convert
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    schema type
+	//    schema name
+	//--------------------------------------------------------------------------
+	
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const UndoAddSchemaOp *_op = (const UndoAddSchemaOp *)op;
+	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
+	ASSERT(schema != NULL);
+
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_ADD_SCHEMA;
+	fwrite_assert(&t, sizeof(EffectType), stream); 
+
+	//--------------------------------------------------------------------------
+	// write schema type
+	//--------------------------------------------------------------------------
+
+	fwrite_assert(&_op->t, sizeof(_op->t), stream); 
+
+	//--------------------------------------------------------------------------
+	// write schema name
+	//--------------------------------------------------------------------------
+
+	const char *schema_name = Schema_GetName(schema);
+	fwrite_assert(schema_name, strlen(schema_name), stream); 
+}
+
 // convert UndoAttrAdd into a AddAttr effect
 static void EffectFromUndoAttrAdd
 (
@@ -123,7 +131,7 @@ static void EffectFromUndoAttrAdd
 	//--------------------------------------------------------------------------
 
 	EffectType t = EFFECT_ADD_ATTRIBUTE;
-	fwrite_assert(&et, sizeof(EffectType), stream); 
+	fwrite_assert(&t, sizeof(EffectType), stream); 
 
 	//--------------------------------------------------------------------------
 	// write attribute name
@@ -211,17 +219,57 @@ static void EffectFromUndoEntityCreate
 }
 
 // convert UndoUpdate into a Update effect
+static void EffectFromUndoSetRemoveLabels
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op, // undo operation to convert
+	EffectType t      // effect type SET/REMOVE LABELS
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+	
+	ASSERT(t == EFFECT_SET_LABELS || t == EFFECT_REMOVE_LABELS);
+
+	const UndoLabelsOp *_op = (const UndoLabelsOp*)op;
+	ushort lbl_count = _op->labels_count;
+
+	// write effect type
+	fwrite_assert(&t, sizeof(EffectType), stream); 
+
+	// write node ID
+	const Node *n = &_op->node;
+	EntityID id = ENTITY_GET_ID(n);
+	fwrite_assert(&id, sizeof(id), stream); 
+	
+	// write labels count
+	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
+	
+	// write label IDs
+	for(ushort i = 0; i < lbl_count; i++) {
+		LabelID lbl = _op->label_ids[i];
+		fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
+	}
+}
+
+// convert UndoUpdate into a Update effect
 static void EffectFromUndoUpdate
 (
 	FILE *stream,     // effects stream
 	const UndoOp *op  // undo operation to convert
 ) {
+	//--------------------------------------------------------------------------
 	// effect format:
 	//    effect type
 	//    entity type node/edge
 	//    entity ID
 	//    attribute id
 	//    attribute value
+	//--------------------------------------------------------------------------
 	
 	// undo operation
 	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
@@ -277,172 +325,22 @@ static void EffectFromUndoOp
 		case UNDO_CREATE_EDGE:
 			EffectFromUndoEntityCreate(stream, op, GETYPE_EDGE);
 			break;
+		case UNDO_ADD_ATTRIBUTE:
+			EffectFromUndoAttrAdd(stream, op);
+			break;
+		case UNDO_SET_LABELS:
+			EffectFromUndoSetRemoveLabels(stream, op, EFFECT_SET_LABELS);
+			break;
+		case UNDO_REMOVE_LABELS:
+			EffectFromUndoSetRemoveLabels(stream, op, EFFECT_REMOVE_LABELS);
+			break;
+		case UNDO_ADD_SCHEMA:
+			EffectFromUndoSchemaAdd(stream, op);
+			break;
 		default:
 			assert(false && "unknown effect");
 			break;
-		//case UNDO_SET_LABELS:
-		//	_EffectFromUndoSetLabels(effect, op);
-		//	break;
-		//case UNDO_REMOVE_LABELS:
-		//	_EffectFromUndoRemoveLabels(effect, op);
-		//	break;
-		//case UNDO_ADD_SCHEMA:
-		//	_EffectFromUndoSchemaAdd(effect, op);
-		//	break;
-		case UNDO_ADD_ATTRIBUTE:
-			EffectFromUndoAttrAdd(effect, op);
-			break;
 	}
-}
-
-static size_t ComputeCreateSize
-(
-	const UndoOp *op,
-	GraphEntityType t
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	// effect type
-	// label count
-	// labels
-	// attribute count
-	// attributes (id,value) pair
-	//--------------------------------------------------------------------------
-
-	// undo operation
-	Graph *g = QueryCtx_GetGraph();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
-
-	// entity-type node/edge
-	GraphEntity *e = (t == GETYPE_NODE) ? (GraphEntity*)&_op->n :
-		(GraphEntity*)&_op->e;
-	
-	// get number of labels
-	uint lbl_count = 1;
-	if(t == GETYPE_NODE) {
-		NODE_GET_LABELS(g, (Node*)e, lbl_count);
-	}
-
-	// get number of attributes
-	const AttributeSet attrs = GraphEntity_GetAttributes(e);
-	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
-
-	//--------------------------------------------------------------------------
-	// compute effect size
-	//--------------------------------------------------------------------------
-
-	size_t s = sizeof(EffectType)                 +  // effect type
-		       sizeof(uint)                       +  // label count
-			   lbl_count * sizeof(LabelID)        +  // labels
-			   sizeof(ushort)                     +  // attribute count
-			   attr_count * sizeof(Attribute_ID);    // attribute IDs
-
-	// compute attribute-set size
-	for(ushort i = 0; i < attr_count; i++) {
-		// compute attribute size
-		Attribute_ID attr_id;
-		SIValue attr = AttributeSet_GetIdx(attrs, i, &attr_id);
-		s += SIValue_BinarySize(&attr);  // attribute value
-	}
-
-	return s;
-}
-
-// compute required update-effect size for undo-update operation
-static size_t ComputeUpdateSize
-(
-	const UndoOp *op
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    entity type node/edge
-	//    entity ID
-	//    attribute name
-	//    attribute value
-	//--------------------------------------------------------------------------
-	
-	// undo operation
-	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
-
-	// entity-type node/edge
-	GraphEntity *e = (_op->entity_type == GETYPE_NODE) ?
-		(GraphEntity*)&_op->n : (GraphEntity*)&_op->e;
-
-	
-	// get updated value
-	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
-
-	// compute effect byte size
-	size_t s = sizeof(EffectType)                +  // effect type
-		       fldsiz(UndoUpdateOp, entity_type) +  // entity type
-			   sizeof(EntityID)                  +  // entity ID
-			   sizeof(Attribute_ID)              +  // attribute ID
-			   SIValue_BinarySize(v);               // attribute value
-
-	return s;
-}
-
-// compute required effects buffer byte size from undo-log
-static size_t ComputeBufferSize
-(
-	const UndoLog undolog
-) {
-	size_t s = 0;  // effects-buffer required size in bytes
-	uint n = UndoLog_Length(undolog);  // number of undo entries
-
-	// compute effect size from each undo operation
-	for(uint i = 0; i < n; i++) {
-		const UndoOp *op = undolog + i;
-		switch(op->type) {
-			case UNDO_DELETE_NODE:
-				// DeleteNode effect size
-				s += sizeof(EffectType) +
-					 fldsiz(UndoDeleteNodeOp, id);
-				break;
-			case UNDO_DELETE_EDGE:
-				// DeleteEdge effect size
-				s += sizeof(EffectType)                   +
-					 fldsiz(UndoDeleteEdgeOp, id)         +
-					 fldsiz(UndoDeleteEdgeOp, relationID) +
-					 fldsiz(UndoDeleteEdgeOp, srcNodeID)  +
-					 fldsiz(UndoDeleteEdgeOp, destNodeID);
-				break;
-			case UNDO_UPDATE:
-				// Update effect size
-				s += ComputeUpdateSize(op);
-				break;
-			case UNDO_CREATE_NODE:
-				s += ComputeCreateSize(op, GETYPE_NODE);
-				break;
-			case UNDO_CREATE_EDGE:
-				s += ComputeCreateSize(op, GETYPE_EDGE);
-				break;
-			default:
-				assert(false && "unknown undo operation");
-				break;
-				//case UNDO_CREATE_NODE:
-				//	_EffectFromUndoNodeCreate(effect, &undo_op->create_op);
-				//	break;
-				//case UNDO_CREATE_EDGE:
-				//	_EffectFromUndoEdgeCreate(effect, undo_op);
-				//	break;
-				//case UNDO_SET_LABELS:
-				//	_EffectFromUndoSetLabels(effect, undo_op);
-				//	break;
-				//case UNDO_REMOVE_LABELS:
-				//	_EffectFromUndoRemoveLabels(effect, undo_op);
-				//	break;
-				//case UNDO_ADD_SCHEMA:
-				//	_EffectFromUndoSchemaAdd(effect, undo_op);
-				//	break;
-				//case UNDO_ADD_ATTRIBUTE:
-				//	_EffectFromUndoAttrAdd(effect, undo_op);
-				//	break;
-		}
-	}
-
-	return s;
 }
 
 // create a list of effects from the undo-log

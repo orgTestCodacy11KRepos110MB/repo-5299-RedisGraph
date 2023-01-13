@@ -27,6 +27,12 @@ typedef enum {
 // effects
 //------------------------------------------------------------------------------
 
+// compute required effects buffer byte size from undo-log
+size_t ComputeBufferSize
+(
+	const UndoLog undolog
+);
+
 // create a list of effects from the undo-log
 u_char *Effects_FromUndoLog
 (
