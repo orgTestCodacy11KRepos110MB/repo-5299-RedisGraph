@@ -273,7 +273,12 @@ Schema *GraphContext_GetSchemaByID
 	return schemas[id];
 }
 
-Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_GetSchema
+(
+	const GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int id = _GraphContext_GetLabelID(gc, label, t);
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
@@ -327,7 +332,12 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 	return size;
 }
 
-Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute, bool* created) {
+Attribute_ID GraphContext_FindOrAddAttribute
+(
+	GraphContext *gc,
+	const char *attribute,
+	bool* created
+) {
 	bool created_flag = false;
 	
 	// Acquire a read lock for looking up the attribute.

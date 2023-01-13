@@ -37,7 +37,7 @@ static void _CommitNodesBlueprint
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 			if(s == NULL) {
-				s = AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE, true);
 				pending->stats->labels_added++;
 			}
 
@@ -98,7 +98,7 @@ static void _CommitEdgesBlueprint
 
 		const char *relation = edge_ctx->relation;
 		Schema *s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-		if(s == NULL) s = AddSchema(gc, relation, SCHEMA_EDGE);
+		if(s == NULL) s = AddSchema(gc, relation, SCHEMA_EDGE, true);
 
 		// calling Graph_GetRelationMatrix will make sure relationship matrix
 		// is of the right dimensions

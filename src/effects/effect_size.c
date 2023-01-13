@@ -48,7 +48,7 @@ static size_t ComputeCreateSize
 	//--------------------------------------------------------------------------
 
 	size_t s = sizeof(EffectType)                 +  // effect type
-		       sizeof(uint)                       +  // label count
+		       sizeof(ushort)                     +  // label count
 			   lbl_count * sizeof(LabelID)        +  // labels
 			   sizeof(ushort)                     +  // attribute count
 			   attr_count * sizeof(Attribute_ID);    // attribute IDs

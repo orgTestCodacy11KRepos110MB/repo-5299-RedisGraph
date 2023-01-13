@@ -12,6 +12,8 @@
 #include "../rg_matrix/rg_matrix.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+typedef int RelationID;
+
 #define EDGE_LENGTH_INF UINT_MAX - 2
 
 // instantiate a new unpopulated edge
@@ -58,7 +60,7 @@ struct Edge {
 	AttributeSet *attributes;   // MUST be the first member
 	EntityID id;                // Unique id, MUST be the second member
 	const char *relationship;   // Label attached to edge
-	int relationID;             // Relation ID
+	RelationID relationID;      // Relation ID
 	Node *src;                  // Pointer to source node
 	Node *dest;                 // Pointer to destination node
 	NodeID srcNodeID;           // Source node ID
@@ -81,7 +83,7 @@ NodeID Edge_GetDestNodeID
 );
 
 // retrieve edge relation ID
-int Edge_GetRelationID
+RelationID Edge_GetRelationID
 (
 	const Edge *edge
 );
@@ -122,7 +124,7 @@ void Edge_SetDestNode
 void Edge_SetRelationID
 (
 	Edge *e,
-	int relationID
+	RelationID relationID
 );
 
 // constructs a string representation of edge

@@ -87,6 +87,14 @@
 #define unlikely(x)     (x)
 #endif
 
+// write string to stream
+#define fwrite_string(str, stream)                       \
+{                                                        \
+	size_t l = strlen(str);                              \
+	fwrite_assert(&l, sizeof(size_t), stream);           \
+	fwrite_assert(str, l, stream);                       \
+}
+
 #define fwrite_assert(input, size, stream)               \
 {                                                        \
 	int write = fwrite(input, size, 1, stream);          \

@@ -24,6 +24,38 @@ static EffectType ReadEffectType
 	return t;
 }
 
+static AttributeSet ReadAttributeSet
+(
+	FILE *stream
+) {
+	//--------------------------------------------------------------------------
+	// read attribute count
+	//--------------------------------------------------------------------------
+
+	ushort attr_count;
+	fread_assert(&attr_count, sizeof(attr_count), stream);
+
+	//--------------------------------------------------------------------------
+	// read attributes
+	//--------------------------------------------------------------------------
+
+	AttributeSet attr_set = NULL;
+	for(ushort i = 0; i < attr_count; i++) {
+		SIValue      attr_value;
+		Attribute_ID attr_id;
+
+		// read attribute ID
+		fread_assert(&attr_id, sizeof(attr_id), stream);
+		
+		// read attribute value
+		attr_value = SIValue_FromBinary(stream);
+
+		AttributeSet_Add(&attr_set, attr_id, attr_value);
+	}
+
+	return attr_set;
+}
+
 static void ApplyCreateNode
 (
 	FILE *stream,     // effects stream
@@ -31,12 +63,40 @@ static void ApplyCreateNode
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
-	// effect type
 	// label count
 	// labels
 	// attribute count
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
+
+	//--------------------------------------------------------------------------
+	// read label count
+	//--------------------------------------------------------------------------
+
+	ushort lbl_count;
+	fread_assert(&lbl_count, sizeof(lbl_count), stream);
+
+	//--------------------------------------------------------------------------
+	// read labels
+	//--------------------------------------------------------------------------
+
+	LabelID labels[lbl_count];
+	for(ushort i = 0; i < lbl_count; i++) {
+		fread_assert(labels + i, sizeof(LabelID), stream);
+	}
+
+	//--------------------------------------------------------------------------
+	// read attributes
+	//--------------------------------------------------------------------------
+
+	AttributeSet attr_set = ReadAttributeSet(stream);
+
+	//--------------------------------------------------------------------------
+	// create node
+	//--------------------------------------------------------------------------
+
+	Node n;
+	CreateNode(gc, &n, labels, lbl_count, attr_set);
 }
 
 static void ApplyCreateEdge
@@ -47,17 +107,56 @@ static void ApplyCreateEdge
 	//--------------------------------------------------------------------------
 	// effect format:
 	// effect type
-	// label count
-	// labels
+	// relationship count
+	// relationships
+	// src node ID
+	// dest node ID
 	// attribute count
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
+
+	// read label count
+	ushort rel_count;
+	fread_assert(&rel_count, sizeof(rel_count), stream);
+	ASSERT(rel_count == 1);
+
+	// read relation
+	RelationID r;
+	fread_assert(&r, sizeof(r), stream);
+
+	//--------------------------------------------------------------------------
+	// read src node ID
+	//--------------------------------------------------------------------------
+
+	NodeID src_id;
+	fread_assert(&src_id, sizeof(NodeID), stream);
+
+	//--------------------------------------------------------------------------
+	// read dest node ID
+	//--------------------------------------------------------------------------
+
+	NodeID dest_id;
+	fread_assert(&dest_id, sizeof(NodeID), stream);
+
+	//--------------------------------------------------------------------------
+	// read attributes
+	//--------------------------------------------------------------------------
+
+	AttributeSet attr_set = ReadAttributeSet(stream);
+
+	//--------------------------------------------------------------------------
+	// create edge
+	//--------------------------------------------------------------------------
+
+	Edge e;
+	CreateEdge(gc, &e, src_id, dest_id, r, attr_set);
 }
 
-static void ApplySetLabels
+static void ApplyLabels
 (
 	FILE *stream,     // effects stream
-	GraphContext *gc  // graph to operate on
+	GraphContext *gc, // graph to operate on
+	bool add          // add or remove labels
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -66,20 +165,65 @@ static void ApplySetLabels
 	//    labels count
 	//    label IDs
 	//--------------------------------------------------------------------------
-}
+	
+	//--------------------------------------------------------------------------
+	// read node ID
+	//--------------------------------------------------------------------------
 
-static void ApplyRemoveLabels
-(
-	FILE *stream,     // effects stream
-	GraphContext *gc  // graph to operate on
-) {
+	EntityID id;
+	fread_assert(&id, sizeof(id), stream);
+
 	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    node ID
-	//    labels count
-	//    label IDs
+	// get updated node
 	//--------------------------------------------------------------------------
+
+	Node  *n = NULL;
+	Graph *g = gc->g;
+
+	Graph_GetNode(g, id, n);
+	ASSERT(n != NULL);
+
+	//--------------------------------------------------------------------------
+	// read labels count
+	//--------------------------------------------------------------------------
+
+	ushort lbl_count;
+	fread_assert(&lbl_count, sizeof(lbl_count), stream);
+	ASSERT(lbl_count > 0);
+
+	const char **add_labels    = NULL;
+	const char **remove_labels = NULL;
+	const char **lbl           = array_newlen(const char*, lbl_count);
+
+	// assign lbl to the appropriate array
+	if(add) {
+		add_labels = lbl;
+	} else {
+		remove_labels = lbl;
+	}
+
+	//--------------------------------------------------------------------------
+	// read labels
+	//--------------------------------------------------------------------------
+
+	for(ushort i = 0; i < lbl_count; i++) {
+		LabelID l;
+		fread_assert(&l, sizeof(LabelID), stream);
+		Schema *s = GraphContext_GetSchemaByID(gc, l, SCHEMA_NODE);
+		ASSERT(s != NULL);
+		lbl[i] = Schema_GetName(s);
+	}
+
+	//--------------------------------------------------------------------------
+	// update node labels
+	//--------------------------------------------------------------------------
+
+	uint labels_added_count;
+	uint labels_removed_count;
+	UpdateNodeLabels(gc, n, add_labels, remove_labels, &labels_added_count,
+			&labels_removed_count, false);
+
+	array_free(lbl);
 }
 
 static void ApplyAddSchema
@@ -93,6 +237,22 @@ static void ApplyAddSchema
 	//    schema type
 	//    schema name
 	//--------------------------------------------------------------------------
+
+	// read schema type
+	SchemaType t;
+	fread_assert(&t, sizeof(t), stream);
+
+	// read schema name
+	// read string length
+	size_t l;
+	fread_assert(&l, sizeof(l), stream);
+
+	// read string
+	char schema_name[l];
+	fread_assert(schema_name, l, stream);
+
+	// create schema
+	AddSchema(gc, schema_name, t, false);
 }
 
 static void ApplyAddAttribute
@@ -105,6 +265,17 @@ static void ApplyAddAttribute
 	// effect type
 	// attribute name
 	//--------------------------------------------------------------------------
+	
+	// read attribute name length
+	size_t l;
+	fread_assert(&l, sizeof(l), stream);
+
+	// read attribute name
+	const char attr[l];
+	fread_assert(attr, l, stream);
+	
+	// add attribute
+	GraphContext_FindOrAddAttribute(gc, attr, NULL);
 }
 
 // process ApplyUpdate effect
@@ -295,10 +466,10 @@ void Effects_Apply
 				ApplyCreateEdge(stream, gc);
 				break;
 			case EFFECT_SET_LABELS:
-				ApplySetLabels(stream, gc);
+				ApplyLabels(stream, gc, true);
 				break;
 			case EFFECT_REMOVE_LABELS: 
-				ApplyRemoveLabels(stream, gc);
+				ApplyLabels(stream, gc, false);
 				break;
 			case EFFECT_ADD_SCHEMA:
 				ApplyAddSchema(stream, gc);

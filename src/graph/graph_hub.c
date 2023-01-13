@@ -129,7 +129,7 @@ uint CreateEdge
 	Edge *e,
 	NodeID src,
 	NodeID dst,
-	int r,
+	RelationID r,
 	AttributeSet set
 ) {
 	ASSERT(gc != NULL);
@@ -302,7 +302,8 @@ void UpdateNodeLabels
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
 	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count   // number of labels removed (out param)
+	uint *labels_removed_count,  // number of labels removed (out param)
+	bool log                     // log this operation in undo-log
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(node != NULL);
@@ -311,8 +312,6 @@ void UpdateNodeLabels
 	if(add_labels == NULL && remove_labels == NULL) {
 		return;
 	}
-
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 
 	if(add_labels != NULL) {
 		uint label_count = array_len(add_labels);
@@ -325,7 +324,7 @@ void UpdateNodeLabels
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
 			if(s == NULL) {
-				s = AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE, log);
 				schema_created = true;
 			}
 
@@ -349,7 +348,11 @@ void UpdateNodeLabels
 
 			// update node's labels
 			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
-			UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels_ids, add_labels_index);
+			if(log == true) {
+				QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+				UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels_ids,
+						add_labels_index);
+			}
 		}
 	}
 
@@ -381,23 +384,30 @@ void UpdateNodeLabels
 			// update node's labels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels_ids,
 					remove_labels_index);
-			UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
+			if(log == true) {
+				QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+				UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
+			}
 		}
 	}
 }
 
-
 Schema *AddSchema
 (
-	GraphContext *gc,             // graph context to add the schema
-	const char *label,            // schema label
-	SchemaType t                  // schema type (node/edge)
+	GraphContext *gc,   // graph context to add the schema
+	const char *label,  // schema label
+	SchemaType t,       // schema type (node/edge)
+	bool log            // should operation be logged in the undo-log      
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	Schema *s = GraphContext_AddSchema(gc, label, t);
-	UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+
+	if(log == true) {
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+	}
+
 	return s;
 }
 

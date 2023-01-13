@@ -36,7 +36,7 @@ uint CreateEdge
 	Edge *e,          // output edge created
 	NodeID src,       // edge source
 	NodeID dst,       // edge destination
-	int r,            // edge relation type
+	RelationID r,     // edge relation type
 	AttributeSet set  // edge attributes
 );
 
@@ -77,7 +77,7 @@ void UpdateEntityProperties
 	uint *props_removed_count     // number of properties removed (out param)
 );
 
-// this function sets the labels given in the rax "labels" to the given node
+// this function sets the labels given in the "labels" to the given node
 // creates the label matrix if not exists
 // adds node to the label matrix
 // updates the relevant indexes of the entity
@@ -88,16 +88,18 @@ void UpdateNodeLabels
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
 	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count   // number of labels removed (out param)
+	uint *labels_removed_count,  // number of labels removed (out param)
+	bool log                     // log this operation in undo-log
 );
 
 // Adds a schema to the graph. The schema is tracked by the undo log
 // so in case of error it will be deleted.
 Schema *AddSchema
 (
-	GraphContext *gc,             // graph context to add the schema
-	const char *label,            // schema label
-	SchemaType t                  // schema type (node/edge)
+	GraphContext *gc,   // graph context to add the schema
+	const char *label,  // schema label
+	SchemaType t,       // schema type (node/edge)
+	bool log            // should operation be logged in the undo-log      
 );
 
 // Find or adding attribute. If there is a need to add an attribute to the graph
