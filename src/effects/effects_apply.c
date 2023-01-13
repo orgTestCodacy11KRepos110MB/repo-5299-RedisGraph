@@ -24,17 +24,102 @@ static EffectType ReadEffectType
 	return t;
 }
 
+static void ApplyCreateNode
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// label count
+	// labels
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+}
+
+static void ApplyCreateEdge
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// label count
+	// labels
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+}
+
+static void ApplySetLabels
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+}
+
+static void ApplyRemoveLabels
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+}
+
+static void ApplyAddSchema
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    schema type
+	//    schema name
+	//--------------------------------------------------------------------------
+}
+
+static void ApplyAddAttribute
+(
+	FILE *stream,     // effects stream
+	GraphContext *gc  // graph to operate on
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// attribute name
+	//--------------------------------------------------------------------------
+}
+
 // process ApplyUpdate effect
 static void ApplyUpdate
 (
 	FILE *stream,     // effects stream
 	GraphContext *gc  // graph to operate on
 ) {
+	//--------------------------------------------------------------------------
 	// effect format:
 	//    entity type node/edge
 	//    entity ID
 	//    attribute ID
 	//    attribute value
+	//--------------------------------------------------------------------------
 	
 	SIValue v;             // updated value
 	uint props_set;        // number of attributes updated
@@ -98,8 +183,10 @@ static void ApplyDeleteNode
 	FILE *stream,     // effects stream
 	GraphContext *gc  // graph to operate on
 ) {
-	// effect format
+	//--------------------------------------------------------------------------
+	// effect format:
 	//    node ID
+	//--------------------------------------------------------------------------
 	
 	Node n;            // node to delete
 	EntityID id;       // node ID
@@ -122,11 +209,13 @@ static void ApplyDeleteEdge
 	FILE *stream,     // effects stream
 	GraphContext *gc  // graph to operate on
 ) {
+	//--------------------------------------------------------------------------
 	// effect format:
 	//    edge ID
 	//    relation ID
 	//    src ID
 	//    dest ID
+	//--------------------------------------------------------------------------
 
 	Edge e;  // edge to delete
 	Node s;  // edge src node
@@ -198,6 +287,24 @@ void Effects_Apply
 				break;
 			case EFFECT_UPDATE:
 				ApplyUpdate(stream, gc);
+				break;
+			case EFFECT_CREATE_NODE:    
+				ApplyCreateNode(stream, gc);
+				break;
+			case EFFECT_CREATE_EDGE:
+				ApplyCreateEdge(stream, gc);
+				break;
+			case EFFECT_SET_LABELS:
+				ApplySetLabels(stream, gc);
+				break;
+			case EFFECT_REMOVE_LABELS: 
+				ApplyRemoveLabels(stream, gc);
+				break;
+			case EFFECT_ADD_SCHEMA:
+				ApplyAddSchema(stream, gc);
+				break;
+			case EFFECT_ADD_ATTRIBUTE:
+				ApplyAddAttribute(stream, gc);
 				break;
 			default:
 				assert(false && "unknown effect type");

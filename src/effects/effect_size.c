@@ -225,13 +225,13 @@ size_t ComputeBufferSize
 				s += ComputeAttrAddSize(op);
 				break;
 			case UNDO_SET_LABELS:
-				ComputeSetLabelSize(op);
+				s += ComputeSetLabelSize(op);
 				break;
 			case UNDO_REMOVE_LABELS:
-				ComputeRemoveLabelSize(op);
+				s += ComputeRemoveLabelSize(op);
 				break;
 			case UNDO_ADD_SCHEMA:
-				ComputeSchemaAddSize(op);
+				s += ComputeSchemaAddSize(op);
 				break;
 			default:
 				assert(false && "unknown undo operation");
