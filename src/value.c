@@ -788,6 +788,9 @@ size_t SIValue_BinarySize
 		case T_DOUBLE:
 			n += sizeof(double);
 			break;
+		case T_NULL:
+			// no additional data is required to represent NULL
+			break;
 		default:
 			assert(false && "unsupported SIValue type");
 	}
@@ -844,6 +847,9 @@ void SIValue_ToBinary
 			// write double to stream
 			fwrite_assert(&v->doubleval, sizeof(v->doubleval), stream);
 			break;
+		case T_NULL:
+			// no additional data is required to represent NULL
+			break;
 		default:
 			assert(false && "unknown SIValue type");
 	}
@@ -899,6 +905,9 @@ SIValue SIValue_FromBinary
 			// read double from stream
 			fread_assert(&d, sizeof(d), stream);
 			v = SI_DoubleVal(d);
+			break;
+		case T_NULL:
+			v = SI_NullVal();
 			break;
 		default:
 			assert(false && "unknown SIValue type");

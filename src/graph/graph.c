@@ -787,7 +787,7 @@ void Graph_CreateEdge
 	Graph *g,
 	NodeID src,
 	NodeID dest,
-	int r,
+	RelationID r,
 	Edge *e
 ) {
 	ASSERT(g != NULL);
@@ -804,12 +804,11 @@ void Graph_CreateEdge
 	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
 	*set = NULL;
 
-	e->id            =  id;
-	e->attributes    =  set;
-	e->srcNodeID     =  src;
-	e->destNodeID    =  dest;
-	e->relationID    =  r;
-
+	e->id          = id;
+	e->srcNodeID   = src;
+	e->destNodeID  = dest;
+	e->relationID  = r;
+	e->attributes  = set;
 
 	Graph_FormConnection(g, src, dest, id, r);
 }

@@ -115,12 +115,18 @@ static void ApplyCreateEdge
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	// read label count
+	//--------------------------------------------------------------------------
+	// read relationship type count
+	//--------------------------------------------------------------------------
+
 	ushort rel_count;
 	fread_assert(&rel_count, sizeof(rel_count), stream);
 	ASSERT(rel_count == 1);
 
-	// read relation
+	//--------------------------------------------------------------------------
+	// read relationship type
+	//--------------------------------------------------------------------------
+
 	RelationID r;
 	fread_assert(&r, sizeof(r), stream);
 
@@ -177,11 +183,10 @@ static void ApplyLabels
 	// get updated node
 	//--------------------------------------------------------------------------
 
-	Node  *n = NULL;
+	Node  n;
 	Graph *g = gc->g;
 
-	Graph_GetNode(g, id, n);
-	ASSERT(n != NULL);
+	Graph_GetNode(g, id, &n);
 
 	//--------------------------------------------------------------------------
 	// read labels count
@@ -220,7 +225,7 @@ static void ApplyLabels
 
 	uint labels_added_count;
 	uint labels_removed_count;
-	UpdateNodeLabels(gc, n, add_labels, remove_labels, &labels_added_count,
+	UpdateNodeLabels(gc, &n, add_labels, remove_labels, &labels_added_count,
 			&labels_removed_count, false);
 
 	array_free(lbl);
@@ -302,19 +307,27 @@ static void ApplyUpdate
 	EntityID id = INVALID_ENTITY_ID;
 
 	//--------------------------------------------------------------------------
-	// read effect data
+	// read entity type
 	//--------------------------------------------------------------------------
 
-	// read entity type
 	fread_assert(&t, sizeof(GraphEntityType), stream);
 
+	//--------------------------------------------------------------------------
 	// read entity ID
+	//--------------------------------------------------------------------------
+
 	fread_assert(&id, sizeof(EntityID), stream);
 
+	//--------------------------------------------------------------------------
 	// read attribute ID
+	//--------------------------------------------------------------------------
+
 	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
 
+	//--------------------------------------------------------------------------
 	// read attribute value
+	//--------------------------------------------------------------------------
+
 	v = SIValue_FromBinary(stream);
 
 	//--------------------------------------------------------------------------
@@ -333,12 +346,9 @@ static void ApplyUpdate
 	UNUSED(res);
 	ASSERT(res == true);
 
-	//--------------------------------------------------------------------------
 	// construct update attribute-set
-	//--------------------------------------------------------------------------
-
 	AttributeSet set = AttributeSet_New();
-	AttributeSet_Add(&set, attr_id, v);
+	AttributeSet_Set_Allow_Null(&set, attr_id, v);
 
 	// perform update
 	UpdateEntityProperties(gc, &ge, set, t, &props_set, &props_removed);

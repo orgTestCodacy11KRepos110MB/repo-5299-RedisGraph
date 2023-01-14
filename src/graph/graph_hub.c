@@ -132,14 +132,14 @@ uint CreateEdge
 	RelationID r,
 	AttributeSet set
 ) {
+	ASSERT(e  != NULL);
 	ASSERT(gc != NULL);
-	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
 	*e->attributes = set;
 
-	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
+	Schema *s = GraphContext_GetSchemaByID(gc, r, SCHEMA_EDGE);
 	ASSERT(s != NULL);
 	Schema_AddEdgeToIndices(s, e);
 

@@ -11,10 +11,9 @@
 
 #include <struct.h>
 
-static size_t ComputeCreateSize
+static size_t ComputeCreateNodeSize
 (
-	const UndoOp *op,
-	GraphEntityType t
+	const UndoOp *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -30,17 +29,14 @@ static size_t ComputeCreateSize
 	const UndoCreateOp *_op = (const UndoCreateOp*)op;
 
 	// entity-type node/edge
-	GraphEntity *e = (t == GETYPE_NODE) ? (GraphEntity*)&_op->n :
-		(GraphEntity*)&_op->e;
+	const Node *n = &_op->n;
 	
 	// get number of labels
-	uint lbl_count = 1;
-	if(t == GETYPE_NODE) {
-		NODE_GET_LABELS(g, (Node*)e, lbl_count);
-	}
+	uint lbl_count;
+	NODE_GET_LABELS(g, n, lbl_count);
 
 	// get number of attributes
-	const AttributeSet attrs = GraphEntity_GetAttributes(e);
+	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)n);
 	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
 
 	//--------------------------------------------------------------------------
@@ -50,6 +46,54 @@ static size_t ComputeCreateSize
 	size_t s = sizeof(EffectType)                 +  // effect type
 		       sizeof(ushort)                     +  // label count
 			   lbl_count * sizeof(LabelID)        +  // labels
+			   sizeof(ushort)                     +  // attribute count
+			   attr_count * sizeof(Attribute_ID);    // attribute IDs
+
+	// compute attribute-set size
+	for(ushort i = 0; i < attr_count; i++) {
+		// compute attribute size
+		Attribute_ID attr_id;
+		SIValue attr = AttributeSet_GetIdx(attrs, i, &attr_id);
+		s += SIValue_BinarySize(&attr);  // attribute value
+	}
+
+	return s;
+}
+
+static size_t ComputeCreateEdgeSize
+(
+	const UndoOp *op
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// relationship count
+	// relationships
+	// src node ID
+	// dest node ID
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+
+	// undo operation
+	Graph *g = QueryCtx_GetGraph();
+	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+
+	const Edge *e = &_op->e;
+
+	// get number of attributes
+	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)e);
+	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
+
+	//--------------------------------------------------------------------------
+	// compute effect size
+	//--------------------------------------------------------------------------
+
+	size_t s = sizeof(EffectType)                 +  // effect type
+			   sizeof(ushort)                     +  // relationship count
+			   sizeof(RelationID)                 +  // relationship
+			   sizeof(NodeID)                     +  // src node ID
+			   sizeof(NodeID)                     +  // dest node ID
 			   sizeof(ushort)                     +  // attribute count
 			   attr_count * sizeof(Attribute_ID);    // attribute IDs
 
@@ -79,11 +123,11 @@ static size_t ComputeAttrAddSize
 	const UndoAddAttributeOp *_op = (const UndoAddAttributeOp*)op;
 
 	// get added attribute name
-	Attribute_ID attr_id =  _op->attribute_id;
+	Attribute_ID attr_id  = _op->attribute_id;
 	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType) + strlen(attr_name);
+	size_t s = sizeof(EffectType) + sizeof(size_t) + strlen(attr_name);
 
 	return s;
 }
@@ -146,7 +190,7 @@ static size_t ComputeSchemaAddSize
 
 	size_t s = sizeof(EffectType) +
 		       sizeof(SchemaType) +
-			   strlen(Schema_GetName(schema));
+			   sizeof(size_t) + strlen(Schema_GetName(schema));
 
 	return s;
 }
@@ -216,10 +260,10 @@ size_t ComputeBufferSize
 				s += ComputeUpdateSize(op);
 				break;
 			case UNDO_CREATE_NODE:
-				s += ComputeCreateSize(op, GETYPE_NODE);
+				s += ComputeCreateNodeSize(op);
 				break;
 			case UNDO_CREATE_EDGE:
-				s += ComputeCreateSize(op, GETYPE_EDGE);
+				s += ComputeCreateEdgeSize(op);
 				break;
 			case UNDO_ADD_ATTRIBUTE:
 				s += ComputeAttrAddSize(op);

@@ -109,7 +109,7 @@ static void EffectFromUndoSchemaAdd
 	//--------------------------------------------------------------------------
 
 	const char *schema_name = Schema_GetName(schema);
-	fwrite_assert(schema_name, strlen(schema_name), stream); 
+	fwrite_string(schema_name, stream);
 }
 
 // convert UndoAttrAdd into a AddAttr effect
@@ -255,7 +255,7 @@ static void EffectFromUndoEdgeCreate
 	fwrite_assert(&et, sizeof(EffectType), stream); 
 
 	//--------------------------------------------------------------------------
-	// relationship type
+	// write relationship type
 	//--------------------------------------------------------------------------
 
 	ushort rel_count = 1;
@@ -320,7 +320,7 @@ static void EffectFromUndoSetRemoveLabels
 	// write label IDs
 	for(ushort i = 0; i < lbl_count; i++) {
 		LabelID lbl = _op->label_ids[i];
-		fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
+		fwrite_assert(&lbl, sizeof(lbl), stream);
 	}
 }
 
@@ -346,22 +346,42 @@ static void EffectFromUndoUpdate
 	GraphEntity *e = (_op->entity_type == GETYPE_NODE) ?
 		(GraphEntity*)&_op->n : (GraphEntity*)&_op->e;
 
+	//--------------------------------------------------------------------------
 	// write effect type
+	//--------------------------------------------------------------------------
+
 	EffectType t = EFFECT_UPDATE;
 	fwrite_assert(&t, sizeof(EffectType), stream); 
 
+	//--------------------------------------------------------------------------
 	// write entity type
+	//--------------------------------------------------------------------------
+
 	fwrite_assert(&_op->entity_type, sizeof(_op->entity_type), stream);
 
+	//--------------------------------------------------------------------------
 	// write entity ID
+	//--------------------------------------------------------------------------
+
 	fwrite_assert(&ENTITY_GET_ID(e), sizeof(EntityID), stream);
 
+	//--------------------------------------------------------------------------
 	// write attribute ID
+	//--------------------------------------------------------------------------
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	fwrite_assert(&_op->attr_id, sizeof(Attribute_ID), stream);
 
+	//--------------------------------------------------------------------------
 	// write attribute value
+	//--------------------------------------------------------------------------
+
 	SIValue *v = GraphEntity_GetProperty(e, _op->attr_id);
+	if(v == ATTRIBUTE_NOTFOUND) {
+		// attribute been deleted
+		*v = SI_NullVal();
+	}
+
 	SIValue_ToBinary(stream, v);
 }
 
