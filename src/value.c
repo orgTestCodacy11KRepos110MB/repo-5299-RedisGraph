@@ -777,6 +777,7 @@ size_t SIValue_BinarySize
 			n += SIArray_BinarySize(v);
 			break;
 		case T_STRING:
+			n += sizeof(size_t);
 			n += strlen(v->stringval);
 			break;
 		case T_BOOL:
@@ -832,7 +833,9 @@ void SIValue_ToBinary
 			len = strlen(v->stringval);
 			// write string to stream
 			fwrite_assert(&len, sizeof(size_t), stream);
-			fwrite_assert(&v->stringval, len, stream);
+			if(len > 0) {
+				fwrite_assert(&v->stringval, len, stream);
+			}
 			break;
 		case T_BOOL:
 			// write bool to stream
@@ -870,15 +873,16 @@ SIValue SIValue_FromBinary
 	bool     b;
 	int64_t  i;
 	double   d;
-	char     *s;
+	Point    p;
+	char    *s;
 	struct SIValue *array;
-	Point point;
 
 	fread_assert(&t, sizeof(SIType), stream);
 	switch(t) {
 		case T_POINT:
 			// read point from stream
-			fread_assert(&v.point, sizeof(v.point), stream);
+			fread_assert(&p, sizeof(v.point), stream);
+			v = SI_Point(p.latitude, p.longitude);
 			break;
 		case T_ARRAY:
 			// read array from stream
@@ -887,9 +891,15 @@ SIValue SIValue_FromBinary
 		case T_STRING:
 			// read string length from stream
 			fread_assert(&len, sizeof(len), stream);
-			v.stringval = rm_malloc(sizeof(char) * len);
-			// read string from stream
-			fread_assert(&v.stringval, sizeof(char) * len, stream);
+			if(len > 0) {
+				s = rm_malloc(sizeof(char) * len);
+				// read string from stream
+				fread_assert(s, sizeof(char) * len, stream);
+				v = SI_TransferStringVal(s);
+			} else {
+				// empty string
+				v = SI_DuplicateStringVal("");
+			}
 			break;
 		case T_BOOL:
 			// read bool from stream
