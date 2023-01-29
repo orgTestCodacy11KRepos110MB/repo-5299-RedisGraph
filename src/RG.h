@@ -90,7 +90,7 @@
 // write string to stream
 #define fwrite_string(str, stream)                       \
 {                                                        \
-	size_t l = strlen(str);                              \
+	size_t l = strlen(str) + 1;                          \
 	fwrite_assert(&l, sizeof(size_t), stream);           \
 	fwrite_assert(str, l, stream);                       \
 }

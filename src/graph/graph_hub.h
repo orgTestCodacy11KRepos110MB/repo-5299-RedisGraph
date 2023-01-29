@@ -18,11 +18,12 @@
 // return the # of attributes set
 uint CreateNode
 (
-	GraphContext *gc, // graph context to create the node
-	Node *n,          // output node created
-	LabelID *labels,  // node labels
-	uint label_count, // labels count
-	AttributeSet set  // node attributes
+	GraphContext *gc,  // graph context to create the node
+	Node *n,           // output node created
+	LabelID *labels,   // node labels
+	uint label_count,  // labels count
+	AttributeSet set,  // node attributes
+	bool log           // log operation in undo-log
 );
 
 // create an edge
@@ -32,12 +33,13 @@ uint CreateNode
 // return the # of attributes set
 uint CreateEdge
 (
-	GraphContext *gc, // graph context to create the edge
-	Edge *e,          // output edge created
-	NodeID src,       // edge source
-	NodeID dst,       // edge destination
-	RelationID r,     // edge relation type
-	AttributeSet set  // edge attributes
+	GraphContext *gc,  // graph context to create the edge
+	Edge *e,           // output edge created
+	NodeID src,        // edge source
+	NodeID dst,        // edge destination
+	RelationID r,      // edge relation type
+	AttributeSet set,  // edge attributes
+	bool log           // log operation in undo-log
 );
 
 // delete a node
@@ -74,7 +76,8 @@ void UpdateEntityProperties
 	const AttributeSet set,       // attributes to update
 	GraphEntityType entity_type,  // the entity type (node/edge)
 	uint *props_set_count,        // number of properties set (out param)
-	uint *props_removed_count     // number of properties removed (out param)
+	uint *props_removed_count,    // number of properties removed (out param)
+	bool log                      // log update in undo-log
 );
 
 // this function sets the labels given in the "labels" to the given node
@@ -99,13 +102,15 @@ Schema *AddSchema
 	GraphContext *gc,   // graph context to add the schema
 	const char *label,  // schema label
 	SchemaType t,       // schema type (node/edge)
-	bool log            // should operation be logged in the undo-log      
+	bool log            // should operation be logged in the undo-log
 );
 
 // Find or adding attribute. If there is a need to add an attribute to the graph
 // the attribute is tracked by the undo log so in case of error it will be deleted.
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,             // graph context to add the attribute
-	const char *attribute         // attribute name
+	GraphContext *gc,       // graph context to add the attribute
+	const char *attribute,  // attribute name
+	bool log                // should operation be logged in the undo-log
 );
+

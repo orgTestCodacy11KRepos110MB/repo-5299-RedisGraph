@@ -101,10 +101,11 @@ uint CreateNode
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	AttributeSet set
+	AttributeSet set,
+	bool log
 ) {
+	ASSERT(n  != NULL);
 	ASSERT(gc != NULL);
-	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
 	*n->attributes = set;
@@ -118,7 +119,9 @@ uint CreateNode
 
 	// add node creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateNode(&query_ctx->undo_log, n);
+	if(log == true) {
+		UndoLog_CreateNode(&query_ctx->undo_log, n);
+	}
 
 	return ATTRIBUTE_SET_COUNT(set);
 }
@@ -130,7 +133,8 @@ uint CreateEdge
 	NodeID src,
 	NodeID dst,
 	RelationID r,
-	AttributeSet set
+	AttributeSet set,
+	bool log
 ) {
 	ASSERT(e  != NULL);
 	ASSERT(gc != NULL);
@@ -145,7 +149,9 @@ uint CreateEdge
 
 	// add edge creation operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateEdge(&query_ctx->undo_log, e);
+	if(log == true) {
+		UndoLog_CreateEdge(&query_ctx->undo_log, e);
+	}
 
 	return ATTRIBUTE_SET_COUNT(set);
 }
@@ -215,7 +221,8 @@ static void _Update_Entity_Property
 	SIValue new_value,
 	GraphEntityType entity_type,
 	uint *props_set_count,
-	uint *props_removed_count
+	uint *props_removed_count,
+	bool log
 ) {
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	if(attr_id == ATTRIBUTE_ID_ALL) {
@@ -226,14 +233,18 @@ static void _Update_Entity_Property
 			Attribute_ID id;
 			// add entity update operation to undo log
 			SIValue value = AttributeSet_GetIdx(set, i, &id);
-			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value,
-					entity_type);
+			if(log) {
+				UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value,
+						entity_type);
+			}
 		}
 	} else {
 		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
 		// add entity update operation to undo log
-		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value,
-				entity_type);
+		if(log) {
+			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value,
+					entity_type);
+		}
 	}
 
 	// update the property and set the appropriate counter.
@@ -263,7 +274,8 @@ void UpdateEntityProperties
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
 	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count     // number of attributes removed
+	uint *props_removed_count,    // number of attributes removed
+	bool log                      // log update in undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
@@ -279,7 +291,7 @@ void UpdateEntityProperties
 		uint _removed_props = 0;
 
 		_Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type,
-				&_set_props, &_removed_props);
+				&_set_props, &_removed_props, log);
 
 		set_props     += _set_props;
 		removed_props += _removed_props;
@@ -413,19 +425,23 @@ Schema *AddSchema
 
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,             // graph context to add the attribute
-	const char *attribute         // attribute name
+	GraphContext *gc,       // graph context to add the attribute
+	const char *attribute,  // attribute name
+	bool log                // should operation be logged in the undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(attribute != NULL);
 
 	bool created;
 	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
-	// In case there was an append, the latest id should be tracked
+	// in case there was an append, the latest id should be tracked
 	if(created) {
 		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
+		if(log) {
+			UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
+		}
 	}
+
 	return attr_id;
 }
 

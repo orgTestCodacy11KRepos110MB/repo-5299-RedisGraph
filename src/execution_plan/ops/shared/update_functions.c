@@ -81,7 +81,7 @@ void CommitUpdates
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
-				&_props_removed);
+				&_props_removed, true);
 
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
@@ -171,7 +171,7 @@ void EvalEntityUpdates
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
-			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
+			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			_PreparePendingUpdate(&update.attributes, accepted_properties,
 				attr_id, new_value);
 		} else {
@@ -206,7 +206,8 @@ void EvalEntityUpdates
 					SIValue key;
 					SIValue value;
 					Map_GetIdx(m, j, &key, &value);
-					Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval);
+					Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval,
+							true);
 
 					_PreparePendingUpdate(&update.attributes, accepted_properties,
 						attr_id, value);

@@ -96,7 +96,7 @@ static void ApplyCreateNode
 	//--------------------------------------------------------------------------
 
 	Node n;
-	CreateNode(gc, &n, labels, lbl_count, attr_set);
+	CreateNode(gc, &n, labels, lbl_count, attr_set, false);
 }
 
 static void ApplyCreateEdge
@@ -155,7 +155,7 @@ static void ApplyCreateEdge
 	//--------------------------------------------------------------------------
 
 	Edge e;
-	CreateEdge(gc, &e, src_id, dest_id, r, attr_set);
+	CreateEdge(gc, &e, src_id, dest_id, r, attr_set, false);
 }
 
 static void ApplyLabels
@@ -278,9 +278,11 @@ static void ApplyAddAttribute
 	// read attribute name
 	const char attr[l];
 	fread_assert(attr, l, stream);
+
+	// TODO: debug make sure attr isn't part of the graph
 	
 	// add attribute
-	GraphContext_FindOrAddAttribute(gc, attr, NULL);
+	FindOrAddAttribute(gc, attr, false);
 }
 
 // process ApplyUpdate effect
@@ -351,8 +353,8 @@ static void ApplyUpdate
 	AttributeSet_Set_Allow_Null(&set, attr_id, v);
 
 	// perform update
-	UpdateEntityProperties(gc, &ge, set, t, &props_set, &props_removed);
-	ASSERT(props_set + props_removed == 1);  // expecting a single change
+	UpdateEntityProperties(gc, &ge, set, t, &props_set, &props_removed, false);
+	ASSERT(props_set + props_removed >= 1);  // expecting a single change
 
 	// clean up
 	AttributeSet_Free(&set);

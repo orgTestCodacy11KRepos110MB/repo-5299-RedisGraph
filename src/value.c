@@ -778,7 +778,7 @@ size_t SIValue_BinarySize
 			break;
 		case T_STRING:
 			n += sizeof(size_t);
-			n += strlen(v->stringval);
+			n += strlen(v->stringval) + 1;
 			break;
 		case T_BOOL:
 			n += sizeof(bool);
@@ -830,12 +830,7 @@ void SIValue_ToBinary
 			SIArray_ToBinary(stream, v);
 			break;
 		case T_STRING:
-			len = strlen(v->stringval);
-			// write string to stream
-			fwrite_assert(&len, sizeof(size_t), stream);
-			if(len > 0) {
-				fwrite_assert(&v->stringval, len, stream);
-			}
+			fwrite_string(v->stringval, stream);
 			break;
 		case T_BOOL:
 			// write bool to stream
@@ -891,15 +886,10 @@ SIValue SIValue_FromBinary
 		case T_STRING:
 			// read string length from stream
 			fread_assert(&len, sizeof(len), stream);
-			if(len > 0) {
-				s = rm_malloc(sizeof(char) * len);
-				// read string from stream
-				fread_assert(s, sizeof(char) * len, stream);
-				v = SI_TransferStringVal(s);
-			} else {
-				// empty string
-				v = SI_DuplicateStringVal("");
-			}
+			s = rm_malloc(sizeof(char) * len);
+			// read string from stream
+			fread_assert(s, sizeof(char) * len, stream);
+			v = SI_TransferStringVal(s);
 			break;
 		case T_BOOL:
 			// read bool from stream

@@ -442,16 +442,16 @@ u_char *Effects_FromUndoLog
 
 	// expecting at least one undo operation
 	uint n = UndoLog_Length(log);
-	ASSERT(n > 0);
+	if(n == 0) {
+		return NULL;
+	}
 
 	//--------------------------------------------------------------------------
 	// determine required effects buffer size
 	//--------------------------------------------------------------------------
 
 	size_t buff_size = ComputeBufferSize(log);
-	if(buff_size == 0) {
-		return NULL;
-	}
+	ASSERT(buff_size != 0);
 
 	// allocate effects buffer and treat it as a stream
 	u_char *buffer = rm_malloc(sizeof(u_char) * buff_size);

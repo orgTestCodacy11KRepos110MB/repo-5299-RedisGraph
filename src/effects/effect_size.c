@@ -127,7 +127,9 @@ static size_t ComputeAttrAddSize
 	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType) + sizeof(size_t) + strlen(attr_name);
+	size_t s = sizeof(EffectType) +
+		       sizeof(size_t) +
+			   strlen(attr_name) + 1;
 
 	return s;
 }
@@ -190,7 +192,8 @@ static size_t ComputeSchemaAddSize
 
 	size_t s = sizeof(EffectType) +
 		       sizeof(SchemaType) +
-			   sizeof(size_t) + strlen(Schema_GetName(schema));
+			   sizeof(size_t)     +
+			   strlen(Schema_GetName(schema)) + 1;
 
 	return s;
 }
