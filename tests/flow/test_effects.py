@@ -10,10 +10,31 @@ class testEffects():
         return monitor_response
     
     def monitor_thread(self):
-        with self.replica.monitor() as m:
-            for cmd in m.listen():
-                if 'GRAPH.EFFECT' in cmd['command']:
-                    self.commands.append(cmd['command'][len('GRAPH.EFFECT ' + GRAPH_ID):])
+        try:
+            with self.replica.monitor() as m:
+                for cmd in m.listen():
+                    if 'GRAPH.EFFECT' in cmd['command']:
+                        self.commands.append(cmd['command'][len('GRAPH.EFFECT ' + GRAPH_ID):])
+        except:
+            pass
+
+    def wait_for_effect(self):
+        # wait for monitor to receive commands
+        while len(self.commands) != 1:
+            time.sleep(1)
+
+        return self.commands.pop()
+
+    def assert_graph_eq(self):
+        q = "MATCH (n) RETURN n ORDER BY(n)"
+        master_resultset = self.master_graph.query(q).result_set
+        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
+        self.env.assertEquals(master_resultset, replica_resultset)
+
+        q = "MATCH ()-[e]->() RETURN e ORDER BY(e)"
+        master_resultset = self.master_graph.query(q).result_set
+        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
+        self.env.assertEquals(master_resultset, replica_resultset)
 
     def __init__(self):
         self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
@@ -23,8 +44,13 @@ class testEffects():
         self.replica_graph = Graph(self.replica, GRAPH_ID)
         self.commands = []
 
-        monitor_thread = threading.Thread(target=self.monitor_thread)
-        monitor_thread.start()
+        self.monitor_thread = threading.Thread(target=self.monitor_thread)
+        self.monitor_thread.start()
+
+    def __del__(self):
+        # all done, shutdown replica
+        # stops monitor thread
+        self.replica.shutdown()
     
     def test01_add_schema_effect(self):
         # test the introduction of a schema by an effect
@@ -33,17 +59,19 @@ class testEffects():
         q = "CREATE (:L)"
         self.master_graph.query(q)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
+        # TODO: validate effect
+        effect = self.wait_for_effect()
+
+        self.assert_graph_eq()
+
+        # introduce a new relationship-type which in turn creates a new schema
+        q = "CREATE ()-[:R]->()"
+        self.master_graph.query(q)
 
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n:L) RETURN n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test02_add_attribute_effect(self):
         # test the introduction of an attribute by an effect
@@ -61,21 +89,19 @@ class testEffects():
 
         self.master_graph.query(q)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n:L) RETURN n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test03_create_node_effect(self):
         # test the introduction of a new node by an effect
-        q = """CREATE (:A:B {
+
+        # empty node
+        q0 = """CREATE ()"""
+
+        # label-less node with attributes
+        q1 = """CREATE ({
                             i:1,
                             s:'str',
                             b:True,
@@ -84,19 +110,29 @@ class testEffects():
                             f:3.14,
                             empty_string: ''
                         })"""
-        self.master_graph.query(q)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
+        # labeled node without attributes
+        q2 = """CREATE (:L)"""
 
-        # TODO: validate effect
-        cmd = self.commands.pop()
+        # node with multiple labels and attributes
+        q3 = """CREATE (:A:B {
+                            i:1,
+                            s:'str',
+                            b:True,
+                            a:[1, [2], '3'],
+                            p:point({latitude: 51, longitude: 0}),
+                            f:3.14,
+                            empty_string: ''
+                        })"""
 
-        q = "MATCH (n) RETURN n ORDER BY n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        queries = [q0, q1, q2, q3]
+        for q in queries:
+            self.master_graph.query(q)
+
+            # TODO: validate effect
+            effect = self.wait_for_effect()
+
+        self.assert_graph_eq()
 
     def test04_update_effect(self):
         # test an entity attribute set update by an effect
@@ -114,17 +150,10 @@ class testEffects():
 
         self.master_graph.query(q)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n) RETURN n ORDER BY n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test05_set_labels_effect(self):
         # test the addition of a new node label by an effect
@@ -132,17 +161,10 @@ class testEffects():
         result = self.master_graph.query(q)
         self.env.assertEquals(result.labels_added, 1)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n) RETURN n ORDER BY n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test06_remove_labels_effect(self):
         # test the removal of a node label by an effect
@@ -150,68 +172,54 @@ class testEffects():
         result = self.master_graph.query(q)
         self.env.assertEquals(result.labels_removed, 1)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n) RETURN n ORDER BY n"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test07_create_edge_effect(self):
         # tests the introduction of a new edge by an effect
-        q = """CREATE ()-[:R {v:1}]->()"""
-        result = self.master_graph.query(q)
-        self.env.assertEquals(result.relationships_created, 1)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
+        # edge without attributes
+        q1 = """CREATE ()-[:R]->()"""
 
-        # TODO: validate effect
-        cmd = self.commands.pop()
+        # edge with attributes
+        q2 = """CREATE ()-[:connect {v:1}]->()"""
 
-        q = "MATCH ()-[e]->() RETURN e ORDER BY e"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        # edge between an existing node and a new node
+        q3 = """MATCH (a) WITH a LIMIT 1 CREATE (a)-[:R]->()"""
+
+        # edge between two existing nodes
+        q4 = """MATCH (a), (b) WITH a, b LIMIT 1 CREATE (a)-[:R]->(b)"""
+
+        queries = [q1, q2, q3, q4]
+        for q in queries:
+            result = self.master_graph.query(q)
+            self.env.assertEquals(result.relationships_created, 1)
+
+            # TODO: validate effect
+            effect = self.wait_for_effect()
+
+        self.assert_graph_eq()
 
     def test08_delete_edge_effect(self):
         # test the deletion of an edge by an effect
-        q = """MATCH ()-[e]->() DELETE e"""
+        q = """MATCH ()-[e]->() WITH e LIMIT 1 DELETE e"""
         result = self.master_graph.query(q)
         self.env.assertEquals(result.relationships_deleted, 1)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH ()-[e]->() RETURN count(e)"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
     def test09_delete_node_effect(self):
         # test the deletion of a node by an effect
         q = "MATCH (n) DELETE n"
         self.master_graph.query(q)
 
-        # wait for monitor to receive commands
-        while len(self.commands) != 1:
-            time.sleep(1)
-
         # TODO: validate effect
-        cmd = self.commands.pop()
+        effect = self.wait_for_effect()
 
-        q = "MATCH (n) RETURN count(n)"
-        master_resultset = self.master_graph.query(q).result_set
-        replica_resultset = self.replica_graph.query(q, read_only=True).result_set
-        self.env.assertEquals(master_resultset, replica_resultset)
+        self.assert_graph_eq()
 
