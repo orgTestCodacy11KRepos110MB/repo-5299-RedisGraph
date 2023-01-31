@@ -21,13 +21,13 @@ typedef enum {
 } AST_Validation;
 
 typedef struct {
-	const cypher_astnode_t *root;                      // root element of libcypher-parser AST
-	rax *referenced_entities;                          // mapping of the referenced entities
-	AST_AnnotationCtxCollection *anot_ctx_collection;  // holds annotations contexts
-	bool free_root;                                    // the root should only be freed if this is a sub-AST we constructed
-	uint *ref_count;                                   // a pointer to reference counter (for deletion)
-	cypher_parse_result_t *parse_result;               // query parsing output
-	cypher_parse_result_t *params_parse_result;        // parameters parsing output
+	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
+	rax *referenced_entities;                           // Mapping of the referenced entities.
+	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
+	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
+	uint *ref_count;                                    // A pointer to reference counter (for deletion).
+	cypher_parse_result_t *parse_result;                // Query parsing output.
+	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
 
 // checks to see if libcypher-parser reported any errors
@@ -43,10 +43,16 @@ void AST_ReportErrors
 	const cypher_parse_result_t *result
 );
 
+AST_Validation AST_Validate_ParseResultRoot
+(
+	const cypher_parse_result_t *result,
+	int *index
+);
+
 // make sure the parse result and the AST tree pass all validations
 AST_Validation AST_Validate_Query
 (
-	const cypher_parse_result_t *result
+	const cypher_astnode_t *root
 );
 
 // validate query parameters parsing only
@@ -121,7 +127,7 @@ const cypher_astnode_t **AST_GetClauses
 	cypher_astnode_type_t type
 );
 
-// returns an array (arr.h type) of all the nodes from a given type
+// returns an array (arr.h type) of all the nodes from a given type.
 // note: array must be free after use
 const cypher_astnode_t **AST_GetTypedNodes
 (
@@ -168,7 +174,7 @@ void AST_BuildReferenceMap
 	const cypher_astnode_t *project_clause
 );
 
-// annotate AST, naming all anonymous graph entities
+// annotate AST naming all anonymous graph entities
 void AST_Enrich
 (
 	AST *ast
@@ -188,8 +194,7 @@ bool AST_IdentifierIsAlias
 	const char *identifier
 );
 
-// convert an AST integer node
-// (which is stored internally as a string) into an integer
+// convert an AST integer node (which is stored internally as a string) into an integer
 long AST_ParseIntegerNode
 (
 	const cypher_astnode_t *int_node
@@ -216,7 +221,7 @@ const char **AST_BuildCallColumnNames
 // parse a query to construct an immutable AST
 cypher_parse_result_t *parse_query
 (
-	const char *query
+	const char *query  // query to parse
 );
 
 // parse a query parameter values only
@@ -239,10 +244,12 @@ AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection
 	AST *ast
 );
 
-const char *AST_ToString(const cypher_astnode_t *node);
+const char *AST_ToString
+(
+	const cypher_astnode_t *node
+);
 
 void AST_Free
 (
 	AST *ast
 );
-

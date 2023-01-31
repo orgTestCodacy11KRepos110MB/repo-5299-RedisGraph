@@ -212,11 +212,15 @@ static void _UndoLog_Rollback_Create_Edge
 	int seq_end
 ) {
 	UndoOp *undo_list = ctx->undo_log;
+	uint64_t n = seq_start - seq_end;
+	Edge *edges = array_new(Edge, n);
 	for(int i = seq_start; i > seq_end; --i) {
 		Edge *e = &undo_list[i].create_op.e;
 		_index_delete_edge(ctx, e);
-		Graph_DeleteEdge(ctx->gc->g, e);
+		array_append(edges, *e);
 	}
+	Graph_DeleteEdges(ctx->gc->g, edges, n);
+	array_free(edges);
 }
 
 // undo node deletion
@@ -395,7 +399,7 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoLog *log,  // undo log
-	Edge *edge      // edge deleted
+	Edge *edge     // edge deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(edge != NULL);

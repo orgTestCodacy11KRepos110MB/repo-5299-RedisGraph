@@ -54,6 +54,14 @@ bool SIArray_AllOfType
 	SIType t          // type to compare
 );
 
+// returns true if the array contains an element equals to 'value'
+bool SIArray_ContainsValue
+(
+	SIValue siarray,    // array to search
+	SIValue value,      // value to locate
+	bool *comparedNull  // indicate if there was a null comparison
+);
+
 // returns a copy of the array, caller needs to free the array
 SIValue SIArray_Clone
 (

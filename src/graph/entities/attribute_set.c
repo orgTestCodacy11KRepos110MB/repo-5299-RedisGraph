@@ -65,15 +65,6 @@ static bool _AttributeSet_Remove
 	return false;
 }
 
-// create new empty attribute set
-AttributeSet AttributeSet_New(void) {
-	AttributeSet set = rm_malloc(sizeof(_AttributeSet));
-
-	set->attr_count = 0;
-
-	return set;
-}
-
 // retrieves a value from set
 // NOTE: if the key does not exist
 //       we return the special constant value ATTRIBUTE_NOTFOUND
@@ -123,8 +114,8 @@ SIValue AttributeSet_GetIdx
 
 static AttributeSet AttributeSet_AddPrepare
 (
-	AttributeSet *set,    // set to update
-	Attribute_ID attr_id  // attribute identifier
+	AttributeSet *set,     // set to update
+	Attribute_ID attr_id   // attribute identifier
 ) {
 	ASSERT(set != NULL);
 	ASSERT(attr_id != ATTRIBUTE_ID_NONE);

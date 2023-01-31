@@ -39,6 +39,7 @@ static AttributeSet ReadAttributeSet
 	// read attributes
 	//--------------------------------------------------------------------------
 
+	// TODO: introduce AttributeSet_New(count)
 	AttributeSet attr_set = NULL;
 	for(ushort i = 0; i < attr_count; i++) {
 		SIValue      attr_value;
@@ -349,7 +350,7 @@ static void ApplyUpdate
 	ASSERT(res == true);
 
 	// construct update attribute-set
-	AttributeSet set = AttributeSet_New();
+	AttributeSet set = NULL;
 	AttributeSet_Set_Allow_Null(&set, attr_id, v);
 
 	// perform update
@@ -440,7 +441,7 @@ static void ApplyDeleteEdge
 	Edge_SetRelationID(&e, r_id);
 
 	// delete edge
-	DeleteEdge(gc, &e, false);
+	DeleteEdges(gc, &e, 1, false);
 }
 
 // applys effects encoded in buffer

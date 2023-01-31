@@ -9,8 +9,6 @@
 #include "node.h"
 #include "../../value.h"
 #include "graph_entity.h"
-#include "../rg_matrix/rg_matrix.h"
-#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef int RelationID;
 
@@ -26,8 +24,7 @@ typedef int RelationID;
 	.src = NULL,                      \
 	.dest = NULL,                     \
 	.srcNodeID = INVALID_ENTITY_ID,   \
-	.destNodeID = INVALID_ENTITY_ID,  \
-	.mat = NULL                       \
+	.destNodeID = INVALID_ENTITY_ID   \
 }
 
 // instantiate a new edge with relation data
@@ -40,8 +37,7 @@ typedef int RelationID;
 	.src = NULL,                            \
 	.dest = NULL,                           \
 	.srcNodeID = INVALID_ENTITY_ID,         \
-	.destNodeID = INVALID_ENTITY_ID,        \
-	.mat = NULL                             \
+	.destNodeID = INVALID_ENTITY_ID         \
 }
 
 // resolves to relationship-type ID of the given edge
@@ -65,7 +61,6 @@ struct Edge {
 	Node *dest;                 // Pointer to destination node
 	NodeID srcNodeID;           // Source node ID
 	NodeID destNodeID;          // Destination node ID
-	RG_Matrix mat;              // Adjacency matrix, associated with edge
 };
 
 typedef struct Edge Edge;
@@ -96,12 +91,6 @@ Node *Edge_GetSrcNode
 
 // retrieve edge destination node
 Node *Edge_GetDestNode
-(
-	Edge *e
-);
-
-// retrieves edge matrix
-RG_Matrix Edge_GetMatrix
 (
 	Edge *e
 );

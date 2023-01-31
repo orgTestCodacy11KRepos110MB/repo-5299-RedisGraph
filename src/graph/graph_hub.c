@@ -31,7 +31,7 @@ static void _DeleteNodeFromIndices
 		ASSERT(s != NULL);
 
 		// update any indices this entity is represented in
-		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 		if(idx) Index_RemoveNode(idx, n);
 
 		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
@@ -52,7 +52,7 @@ static void _DeleteEdgeFromIndices
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
 
 	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx) Index_RemoveEdge(idx, e);
 
 	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
@@ -189,28 +189,33 @@ uint DeleteNode
 // delete the edge from the relevant indexes
 // add edge deletion operation to undo-log
 // return the # of edges deleted
-int DeleteEdge
+int DeleteEdges
 (
 	GraphContext *gc,  // graph context to delete the edge
-	Edge *e,           // the edge to be deleted
+	Edge *edges,       // the edges to be deleted
+	uint64_t n,        // number of edges to delete
 	bool log           // log deletion in undo-log
 ) {
-	ASSERT(e  != NULL);
-	ASSERT(gc != NULL);
+	ASSERT(gc     != NULL);
+	ASSERT(edges  != NULL);
 
-	if(log == true) {
-		// add edge deletion operation to undo log
-		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_DeleteEdge(&query_ctx->undo_log, e);
+	// add edge deletion operation to undo log
+	QueryCtx *query_ctx    = QueryCtx_GetQueryCtx();
+	bool      has_indecise = GraphContext_HasIndices(gc);
+
+	for (uint i = 0; i < n; i++) {
+		if(log == true) {
+			UndoLog_DeleteEdge(&query_ctx->undo_log, edges + i);
+		}
+
+		if(has_indecise) {
+			_DeleteEdgeFromIndices(gc, edges + i);
+		}
 	}
 
-	if(GraphContext_HasIndices(gc)) {
-		_DeleteEdgeFromIndices(gc, e);
-	}
-
-	return Graph_DeleteEdge(gc->g, e);
+	return Graph_DeleteEdges(gc->g, edges, n);
 }
-
+				
 // update entity attributes and update undo log
 // in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
 static void _Update_Entity_Property

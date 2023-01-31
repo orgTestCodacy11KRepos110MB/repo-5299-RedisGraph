@@ -106,9 +106,7 @@ static void _DeleteEntities
 		// required as a deleted node must be detached
 
 		// delete edges
-		for(uint i = 0; i < edge_count; i++) {
-			edge_deleted += DeleteEdge(op->gc, distinct_edges + i, true);
-		}
+		edge_deleted += DeleteEdges(op->gc, distinct_edges, edge_count, true);
 
 		// delete nodes
 		for(uint i = 0; i < node_count; i++) {
@@ -157,9 +155,9 @@ static Record DeleteConsume(OpBase *opBase) {
 	Record r = OpBase_Consume(child);
 	if(!r) return NULL;
 
-	/* Expression should be evaluated to either a node or an edge
-	 * which will be marked for deletion, if an expression is evaluated
-	 * to a different value type e.g. Numeric a run-time expection is thrown. */
+	// Expression should be evaluated to either a node, an edge or a path
+	// which will be marked for deletion, if an expression is evaluated
+	// to a different value type e.g. Numeric a run-time exception is thrown. */
 	for(int i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);

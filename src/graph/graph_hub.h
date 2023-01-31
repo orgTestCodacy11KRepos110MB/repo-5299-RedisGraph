@@ -53,15 +53,16 @@ uint DeleteNode
 	bool log           // log deletion in undo-log
 );
 
-// delete an edge
-// delete the edge from the graph
-// delete the edge from the relevant indexes
-// add edge deletion operation to undo-log
+// delete edges
+// delete edges from the graph
+// delete edges from the relevant indexes
+// add edge deletion operations to undo-log
 // return the # of edges deleted
-int DeleteEdge
+int DeleteEdges
 (
 	GraphContext *gc,  // graph context to delete the edge
-	Edge *e,           // the edge to be deleted
+	Edge *edges,       // the edges to be deleted
+	uint64_t n,        // number of edges to delete
 	bool log           // log deletion in undo-log
 );
 
